@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { createSeed } from './data/seed'
+import { COOK_SPECS, createSeed } from './data/seed'
 import type { AppData } from './domain/types'
 
 interface Store {
@@ -32,15 +32,26 @@ export const useStore = create<Store>()(
       replace: (data) => set({ data }),
       reset: () => set({ data: createSeed() }),
     }),
-    { name: 'meal-plan', version: 1, partialize: (s) => ({ data: s.data }) },
+    { name: 'meal-plan', version: 2, partialize: (s) => ({ data: s.data }), migrate: (state) => ({ data: migrate((state as { data: unknown }).data) }) },
   ),
 )
 
 export const useData = () => useStore((s) => s.data)
 
+/** Bring data saved by an older version (localStorage or an exported file) up to date. */
+export function migrate(raw: unknown): AppData {
+  const d = structuredClone(raw) as AppData & { version: number }
+  if (d.version < 2) {
+    d.prices = {}
+    for (const dish of d.dishes) if (!dish.cook && dish.code && COOK_SPECS[dish.code]) dish.cook = structuredClone(COOK_SPECS[dish.code])
+    d.version = 2
+  }
+  return d
+}
+
 export function isAppData(x: unknown): x is AppData {
   const d = x as AppData
-  return !!d && d.version === 1 && Array.isArray(d.products) && Array.isArray(d.dishes) && !!d.menu?.he && !!d.menu?.she && !!d.settings
+  return !!d && (d.version as number) >= 1 && Array.isArray(d.products) && Array.isArray(d.dishes) && !!d.menu?.he && !!d.menu?.she && !!d.settings
 }
 
 export const uid = () => Math.random().toString(36).slice(2, 10)

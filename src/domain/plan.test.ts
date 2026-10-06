@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createSeed } from '../data/seed'
 import { planDay } from './calendar'
-import { cookingPlan, cycleSummary, dayNutrition, productMap, purchases, sumCost, weeklyNeeds } from './plan'
+import { cycleStats, cycleSummary, dayNutrition, priceAt, productMap, purchases, sumCost, weeklyNeeds } from './plan'
 
 const seed = () => createSeed(new Date(2026, 9, 6))
 
@@ -118,22 +118,6 @@ describe('monthly purchases', () => {
   })
 })
 
-describe('cooking plan', () => {
-  it('matches the «План готовки» sheet', () => {
-    const plan = cookingPlan(seed())
-    const row = (code: string) => plan.find((r) => r.dish.code === code)!
-    expect(row('Р3').portions.he.count).toBe(5)
-    expect(row('Р3').portions.she.count).toBe(4)
-    expect(row('Р3').totals.find((t) => t.productId === 'chicken_fillet')!.amount).toBe(1600)
-    expect(row('Р2').totals).toEqual([{ productId: 'eggs', amount: 20 }])
-    expect(row('Р15').portions.he.days).toEqual([3, 6])
-    expect(row('Р7').portions.she.days).toEqual([2, 4, 6])
-    expect(row('Р14').portions.he.count).toBe(8) // sheet says 7, but day 2 has potatoes twice
-    expect(row('Р14').portions.she.count).toBe(5)
-    expect(plan.some((r) => r.dish.code === 'Р12')).toBe(false)
-  })
-})
-
 describe('nutrition', () => {
   // The workbook's «~2400 / ~1550 ккал» are optimistic; reference values give ~1900–2500 and ~1150–1400.
   it('stays in a sane range', () => {
@@ -150,5 +134,51 @@ describe('calendar', () => {
     expect(planDay('2026-10-04', '2026-10-12')).toMatchObject({ menuDay: 1, week: 1, cycleDay: 8 })
     expect(planDay('2026-10-04', '2026-11-01')).toMatchObject({ menuDay: 0, week: 4, weekInCycle: 0, cycle: 1, cycleDay: 0 })
     expect(planDay('2026-10-04', '2026-10-03')).toMatchObject({ offset: -1, menuDay: 6 })
+  })
+})
+
+describe('weekly prices', () => {
+  it('apply from their week onwards and leave earlier weeks alone', () => {
+    const data = seed()
+    data.prices.eggs = { 2: 15 }
+    expect(priceAt(data, 'eggs', 1)).toBe(13)
+    expect(priceAt(data, 'eggs', 2)).toBe(15)
+    expect(priceAt(data, 'eggs', 9)).toBe(15)
+    data.prices.eggs[5] = 14
+    expect(priceAt(data, 'eggs', 4)).toBe(15)
+    expect(priceAt(data, 'eggs', 6)).toBe(14)
+
+    const w1 = purchases(data, 'week', 1).find((r) => r.product.id === 'eggs')!
+    const w2 = purchases(data, 'week', 2).find((r) => r.product.id === 'eggs')!
+    expect(w1).toMatchObject({ price: 13, priceSetHere: false, cost: 20 * 13 })
+    expect(w2).toMatchObject({ price: 15, priceSetHere: true, cost: 20 * 15 })
+  })
+
+  it('price monthly purchases at the first week of the cycle', () => {
+    const data = seed()
+    data.prices.rice = { 4: 200 }
+    expect(purchases(data, 'cycle', 0).find((r) => r.product.id === 'rice')!.price).toBe(140)
+    expect(purchases(data, 'cycle', 1).find((r) => r.product.id === 'rice')!.price).toBe(200)
+  })
+})
+
+describe('cycle statistics', () => {
+  it('split the cost by person and category and list price changes', () => {
+    const data = seed()
+    const base = cycleStats(data, 0)
+    expect(base.perDay * 28).toBeCloseTo(base.summary.food)
+    expect(base.perPersonDay.he + base.perPersonDay.she).toBeCloseTo(base.perDay)
+    expect(base.perPersonDay.he).toBeGreaterThan(base.perPersonDay.she)
+    expect(base.byCategory.reduce((s, c) => s + c.cost, 0)).toBeCloseTo(base.summary.food)
+    expect(base.byCategory[0].category).toBe('Мясо и рыба')
+    expect(base.top).toHaveLength(5)
+    expect(base.changes).toEqual([])
+    expect(base.foodAtBase).toBeCloseTo(base.summary.food)
+
+    data.prices.chicken_fillet = { 2: 528 } // +10 % from week 3
+    const s = cycleStats(data, 0)
+    expect(s.changes).toMatchObject([{ base: 480, current: 528 }])
+    expect(s.changes[0].change).toBeCloseTo(0.1)
+    expect(s.summary.food - s.foodAtBase).toBeCloseTo(2 * 1.6 * 48)
   })
 })

@@ -1,5 +1,5 @@
 import { WEEKS_PER_CYCLE } from './calendar'
-import type { AppData, DayMenu, Dish, Ingredient, Menu, Nutrition, PersonId, Product } from './types'
+import type { AppData, Category, DayMenu, Ingredient, Menu, Nutrition, PersonId, Product } from './types'
 import { PEOPLE } from './types'
 
 export type ProductMap = Map<string, Product>
@@ -59,6 +59,24 @@ export type PeriodKind = 'week' | 'cycle'
 
 export const periodKey = (kind: PeriodKind, index: number) => (kind === 'week' ? `w${index}` : `c${index}`)
 
+/** Price per buy unit in effect in `week`: the latest change at or before it, else the base price. */
+export function priceAt(data: AppData, productId: string, week: number): number {
+  const product = data.products.find((p) => p.id === productId)
+  let best = -1
+  let price = product?.price ?? 0
+  for (const [w, value] of Object.entries(data.prices?.[productId] ?? {})) {
+    const n = Number(w)
+    if (n <= week && n > best) {
+      best = n
+      price = value
+    }
+  }
+  return price
+}
+
+/** First week of a purchase period: cycles are priced at their first week. */
+export const priceWeek = (kind: PeriodKind, index: number) => (kind === 'week' ? index : index * WEEKS_PER_CYCLE)
+
 export interface PurchaseRow {
   product: Product
   needHe: number
@@ -68,6 +86,10 @@ export interface PurchaseRow {
   leftoverOverridden: boolean
   /** Amount to buy in base units, rounded up to the pack step. */
   buy: number
+  /** Price per buy unit in effect for this period. */
+  price: number
+  /** The price was changed exactly in this period's week. */
+  priceSetHere: boolean
   cost: number
   /** Key used for checks and leftover overrides. */
   key: string
@@ -91,10 +113,11 @@ function periodNeed(product: Product, need: Need | undefined, kind: PeriodKind):
  * Leftovers carry over from period to period: leftover = previous leftover + bought − needed,
  * unless the user has overridden it.
  */
-export function purchases(data: AppData, kind: PeriodKind, index: number): PurchaseRow[] {
+export function purchases(data: AppData, kind: PeriodKind, index: number, opts: { basePrices?: boolean } = {}): PurchaseRow[] {
   const needs = weeklyNeeds(data.menu)
   const frequency = kind === 'week' ? 'weekly' : 'monthly'
   const target = Math.max(0, index)
+  const week = priceWeek(kind, target)
   const rows: PurchaseRow[] = []
 
   for (const product of data.products) {
@@ -110,6 +133,7 @@ export function purchases(data: AppData, kind: PeriodKind, index: number): Purch
       const leftover = override != null ? Math.max(0, override) : carried
       const buy = roundUp(need - leftover, product.packStep)
       if (i === target) {
+        const price = opts.basePrices ? product.price : priceAt(data, product.id, week)
         rows.push({
           product,
           needHe: n.he,
@@ -118,7 +142,9 @@ export function purchases(data: AppData, kind: PeriodKind, index: number): Purch
           leftover,
           leftoverOverridden: override != null,
           buy,
-          cost: (buy / product.buyFactor) * product.price,
+          price,
+          priceSetHere: data.prices?.[product.id]?.[week] != null,
+          cost: (buy / product.buyFactor) * price,
           key,
         })
       }
@@ -145,48 +171,76 @@ export function cycleSummary(data: AppData, cycle: number): CycleSummary {
   return { monthly, weeks, food: monthly + weeks.reduce((a, b) => a + b, 0), cookware }
 }
 
-// ---------- Weekly batch cooking ----------
+// ---------- Price statistics ----------
 
-export interface CookPortion {
-  days: number[]
-  count: number
+export interface CategoryCost {
+  category: Category
+  cost: number
 }
 
-export interface CookRow {
-  dish: Dish
-  portions: Record<PersonId, CookPortion>
-  /** Total ingredients for the week, both people. */
-  totals: Ingredient[]
+export interface ProductCost {
+  product: Product
+  cost: number
 }
 
-/** What to cook on the cooking day: every batch dish in the 7-day menu, aggregated. */
-export function cookingPlan(data: AppData): CookRow[] {
-  const byDish = new Map<string, CookRow>()
-  for (const person of PEOPLE) {
-    data.menu[person].forEach((day, dayIdx) => {
-      for (const meal of day) {
-        for (const item of meal.items) {
-          const dish = item.dishId ? data.dishes.find((x) => x.id === item.dishId) : undefined
-          if (!dish?.batch) continue
-          let row = byDish.get(dish.id)
-          if (!row) {
-            row = { dish, portions: { he: { days: [], count: 0 }, she: { days: [], count: 0 } }, totals: [] }
-            byDish.set(dish.id, row)
-          }
-          const portion = row.portions[person]
-          portion.count++
-          if (!portion.days.includes(dayIdx + 1)) portion.days.push(dayIdx + 1)
-          for (const i of item.ingredients) {
-            const t = row.totals.find((x) => x.productId === i.productId)
-            if (t) t.amount += i.amount
-            else row.totals.push({ ...i })
-          }
-        }
-      }
-    })
+export interface PriceChange {
+  product: Product
+  base: number
+  current: number
+  /** Relative change, 0.1 = +10 %. */
+  change: number
+}
+
+export interface CycleStats {
+  summary: CycleSummary
+  perDay: number
+  perPersonDay: Record<PersonId, number>
+  byCategory: CategoryCost[]
+  top: ProductCost[]
+  changes: PriceChange[]
+  /** Food cost of the cycle at base prices, to show how much price changes moved it. */
+  foodAtBase: number
+  previousFood?: number
+}
+
+export function cycleStats(data: AppData, cycle: number): CycleStats {
+  const c = Math.max(0, cycle)
+  const periods: [PeriodKind, number][] = [['cycle', c], ...Array.from({ length: WEEKS_PER_CYCLE }, (_, i) => ['week', c * WEEKS_PER_CYCLE + i] as [PeriodKind, number])]
+  const rows = periods.flatMap(([k, i]) => purchases(data, k, i))
+  const baseRows = periods.flatMap(([k, i]) => purchases(data, k, i, { basePrices: true }))
+
+  const person: Record<PersonId, number> = { he: 0, she: 0 }
+  const byCat = new Map<Category, number>()
+  const byProduct = new Map<string, ProductCost>()
+  for (const r of rows) {
+    const heShare = r.product.fixedPerCycle != null || r.needHe + r.needShe === 0 ? 0.5 : r.needHe / (r.needHe + r.needShe)
+    person.he += r.cost * heShare
+    person.she += r.cost * (1 - heShare)
+    byCat.set(r.product.category, (byCat.get(r.product.category) ?? 0) + r.cost)
+    const pc = byProduct.get(r.product.id) ?? { product: r.product, cost: 0 }
+    pc.cost += r.cost
+    byProduct.set(r.product.id, pc)
   }
-  const order = (d: Dish) => data.dishes.indexOf(d)
-  return [...byDish.values()].sort((a, b) => order(a.dish) - order(b.dish))
+
+  const lastWeek = c * WEEKS_PER_CYCLE + WEEKS_PER_CYCLE - 1
+  const changes = data.products
+    .map((product) => ({ product, base: product.price, current: priceAt(data, product.id, lastWeek) }))
+    .filter((x) => x.current !== x.base)
+    .map((x) => ({ ...x, change: x.base ? x.current / x.base - 1 : 0 }))
+    .sort((a, b) => Math.abs(b.change) - Math.abs(a.change))
+
+  const summary = cycleSummary(data, c)
+  const days = WEEKS_PER_CYCLE * 7
+  return {
+    summary,
+    perDay: summary.food / days,
+    perPersonDay: { he: person.he / days, she: person.she / days },
+    byCategory: [...byCat].map(([category, cost]) => ({ category, cost })).filter((x) => x.cost > 0).sort((a, b) => b.cost - a.cost),
+    top: [...byProduct.values()].sort((a, b) => b.cost - a.cost).slice(0, 5),
+    changes,
+    foodAtBase: sumCost(baseRows),
+    previousFood: c > 0 ? cycleSummary(data, c - 1).food : undefined,
+  }
 }
 
 // ---------- Formatting ----------

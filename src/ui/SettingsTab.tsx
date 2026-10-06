@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 import { formatLong, parseISO, toISO } from '../domain/calendar'
 import { PEOPLE } from '../domain/types'
-import { isAppData, useData, useStore } from '../store'
+import { isAppData, migrate, useData, useStore } from '../store'
 import { Field, NumInput } from './common'
 
 export function SettingsTab() {
@@ -24,7 +24,7 @@ export function SettingsTab() {
     try {
       const parsed = JSON.parse(await f.text())
       if (!isAppData(parsed)) throw new Error('format')
-      if (confirm('Заменить все текущие данные содержимым файла?')) replace(parsed)
+      if (confirm('Заменить все текущие данные содержимым файла?')) replace(migrate(parsed))
     } catch {
       alert('Не получилось прочитать файл: это не резервная копия «Плана питания».')
     }

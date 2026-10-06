@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { dayNutrition, formatInt, nutritionOf, productMap } from '../domain/plan'
-import { CATEGORIES, type AppData, type Dish, type Ingredient, type PersonId, type Product, type Unit } from '../domain/types'
+import { DEFAULT_SPEC } from '../domain/cooking'
+import { CATEGORIES, type AppData, type CookSpec, type Dish, type Ingredient, type PersonId, type Product, type Unit } from '../domain/types'
 import { uid, useData, useStore } from '../store'
 import { Field, Macros, NumInput, PersonToggle, Sheet } from './common'
 import { CATEGORY_COLOR, CATEGORY_ICON, mealStyle, tint } from './colors'
@@ -312,7 +313,7 @@ function DishList() {
         className="btn wide"
         onClick={() => {
           const id = `d_${uid()}`
-          update((d) => d.dishes.push({ id, name: 'Новое блюдо', ingredients: [], howTo: '', storage: '', batch: true, custom: true }))
+          update((d) => d.dishes.push({ id, name: 'Новое блюдо', ingredients: [], howTo: '', storage: '', batch: true, cook: { ...DEFAULT_SPEC }, custom: true }))
           setOpen(id)
         }}
       >
@@ -355,9 +356,19 @@ function DishEditor({ id, onClose }: { id: string; onClose: () => void }) {
         <input value={dish.name} onChange={(e) => set((d) => (d.name = e.target.value))} />
       </Field>
       <label className="switch">
-        <input type="checkbox" checked={dish.batch} onChange={(e) => set((d) => (d.batch = e.target.checked))} />
+        <input
+          type="checkbox"
+          checked={dish.batch}
+          onChange={(e) =>
+            set((d) => {
+              d.batch = e.target.checked
+              if (d.batch && !d.cook) d.cook = { ...DEFAULT_SPEC }
+            })
+          }
+        />
         Готовить в воскресенье на неделю
       </label>
+      {dish.batch && dish.cook && <CookSpecEditor spec={dish.cook} onChange={(fn) => set((d) => fn(d.cook!))} />}
       <h3>Состав на 1 порцию</h3>
       <IngredientsEditor value={dish.ingredients} products={data.products} onChange={(next) => set((d) => (d.ingredients = next))} />
       <p className="macros">
@@ -501,7 +512,7 @@ function ProductEditor({ id, onClose }: { id: string; onClose: () => void }) {
         </Field>
       )}
       <div className="grid2">
-        <Field label={`Цена за ${p.buyUnit}, ₽`}>
+        <Field label={`Базовая цена за ${p.buyUnit}, ₽`}>
           <NumInput value={p.price} onChange={(v) => set((x) => (x.price = v))} />
         </Field>
         <Field label={`Шаг упаковки, ${p.buyUnit}`}>
@@ -559,5 +570,56 @@ function ProductEditor({ id, onClose }: { id: string; onClose: () => void }) {
         {used > 0 ? 'Нельзя удалить: продукт используется' : 'Удалить продукт'}
       </button>
     </Sheet>
+  )
+}
+
+function CookSpecEditor({ spec, onChange }: { spec: CookSpec; onChange: (fn: (s: CookSpec) => void) => void }) {
+  return (
+    <div className="card cook-spec">
+      <h3>Как готовить в день готовки</h3>
+      <div className="grid2">
+        <Field label="Где">
+          <select
+            value={spec.where}
+            onChange={(e) =>
+              onChange((s) => {
+                s.where = e.target.value as CookSpec['where']
+                if (s.where === 'oven' && !s.temp) s.temp = 200
+              })
+            }
+          >
+            <option value="stove">На плите</option>
+            <option value="oven">В духовке</option>
+          </select>
+        </Field>
+        {spec.where === 'oven' && (
+          <Field label="Температура, °C">
+            <NumInput value={spec.temp} onChange={(v) => onChange((s) => (s.temp = v))} />
+          </Field>
+        )}
+        <Field label="Подготовка, мин">
+          <NumInput value={spec.prep} onChange={(v) => onChange((s) => (s.prep = v))} />
+        </Field>
+        <Field label={spec.where === 'oven' ? 'В духовке, мин' : 'На огне, мин'}>
+          <NumInput value={spec.minutes} onChange={(v) => onChange((s) => (s.minutes = v))} />
+        </Field>
+        <Field label="В холодильнике до дня">
+          <NumInput value={spec.fridgeDays} min={1} onChange={(v) => onChange((s) => (s.fridgeDays = Math.min(7, Math.max(1, Math.round(v)))))} />
+        </Field>
+      </div>
+      <label className="switch small">
+        <input type="checkbox" checked={spec.freezes} onChange={(e) => onChange((s) => (s.freezes = e.target.checked))} />
+        Можно замораживать (иначе на конец недели — готовить свежим)
+      </label>
+      {spec.where === 'stove' && (
+        <label className="switch small">
+          <input type="checkbox" checked={!!spec.attended} onChange={(e) => onChange((s) => (s.attended = e.target.checked))} />
+          Нужно стоять у плиты всё время
+        </label>
+      )}
+      <Field label="Что сделать при подготовке">
+        <textarea rows={2} value={spec.prepText} onChange={(e) => onChange((s) => (s.prepText = e.target.value))} />
+      </Field>
+    </div>
   )
 }

@@ -171,3 +171,15 @@ export function Field({ label, children }: { label: string; children: ReactNode 
     </label>
   )
 }
+
+/** ▲ 10 % / ▼ 5 % against the base price; icon + sign, not colour alone. */
+export function PriceDelta({ base, current }: { base: number; current: number }) {
+  if (!base || base === current) return null
+  const pct = Math.round((current / base - 1) * 100)
+  const up = current > base
+  return (
+    <span className={`delta ${up ? 'up' : 'down'}`} title={`Было ${Math.round(base).toLocaleString('ru-RU')} ₽`}>
+      {up ? '▲' : '▼'} {Math.abs(pct)}%{' '}
+    </span>
+  )
+}

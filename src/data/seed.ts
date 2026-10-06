@@ -1,4 +1,4 @@
-import type { AppData, Dish, Ingredient, Meal, MealItem, Product } from '../domain/types'
+import type { AppData, CookSpec, Dish, Ingredient, Meal, MealItem, Product } from '../domain/types'
 import { defaultStartDate } from '../domain/calendar'
 import sheet from './sheet.json'
 
@@ -44,6 +44,24 @@ const recipes = sheet.recipes as Record<string, { code: string; title: string; i
 
 const ing = (productId: string, amount: number): Ingredient => ({ productId, amount })
 
+// Times and temperatures from the recipe texts; fridge days from their «Хранение» notes and the «План готовки» sheet.
+export const COOK_SPECS: Record<string, CookSpec> = {
+  Р2: { where: 'stove', minutes: 15, prep: 2, prepText: 'залить яйца холодной водой', fridgeDays: 7, freezes: false, loose: true },
+  Р3: { where: 'oven', temp: 200, minutes: 25, prep: 10, prepText: 'обсушить филе, натереть солью, перцем, паприкой и маслом, выложить на противень с пергаментом', fridgeDays: 3, freezes: true },
+  Р4: { where: 'oven', temp: 200, minutes: 35, prep: 5, prepText: 'натереть бедро специями, выложить на противень', fridgeDays: 3, freezes: true },
+  Р5: { where: 'stove', minutes: 75, prep: 20, prepText: 'нарезать говядину кубиками 3 см, лук и морковь; обжарить мясо 5–7 мин до корочки, добавить овощи, воду и лавровый лист', fridgeDays: 3, freezes: true },
+  Р6: { where: 'stove', minutes: 12, prep: 4, attended: true, prepText: 'мелко нарезать лук, обжарить 3 мин, добавить фарш и жарить, разбивая комочки', fridgeDays: 3, freezes: true },
+  Р7: { where: 'oven', temp: 170, minutes: 80, prep: 5, prepText: 'натереть кусок солью и специями, плотно завернуть в фольгу', fridgeDays: 3, freezes: true },
+  Р8: { where: 'oven', temp: 190, minutes: 20, prep: 5, prepText: 'обсушить рыбу, посолить, поперчить, смазать маслом, завернуть в фольгу', fridgeDays: 2, freezes: true, thaw: 'переложить рыбу из морозилки в холодильник' },
+  Р10: { where: 'stove', minutes: 15, prep: 10, prepText: 'нарезать лук, морковь и кабачок; обжарить лук с морковью 3 мин, добавить кабачок и воду', fridgeDays: 3, freezes: true },
+  Р11: { where: 'oven', temp: 210, minutes: 25, prep: 10, prepText: 'нарезать кабачок и перец кусками 3 см, смешать с маслом, солью и паприкой', fridgeDays: 3, freezes: false },
+  Р13: { where: 'stove', minutes: 30, prep: 3, prepText: 'промыть рис до прозрачной воды, залить водой 1:2, посолить', fridgeDays: 3, freezes: true },
+  Р14: { where: 'stove', minutes: 25, prep: 12, prepText: 'очистить картофель, нарезать на 4 части, залить холодной водой, посолить', fridgeDays: 4, freezes: false },
+  Р15: { where: 'oven', temp: 180, minutes: 30, prep: 10, prepText: 'смешать творог, яйца и хлопья, добавить ягоды, выложить в форму с пергаментом', fridgeDays: 3, freezes: true },
+  Р19: { where: 'stove', minutes: 40, prep: 10, prepText: 'залить филе водой, довести до кипения; нарезать картофель, морковь и лук', fridgeDays: 3, freezes: true },
+  Р20: { where: 'stove', minutes: 30, prep: 10, prepText: 'нарезать мясо, лук и картофель; обжарить мясо 5 мин', fridgeDays: 3, freezes: false },
+}
+
 function dish(code: string, ingredients: Ingredient[], batch: boolean): Dish {
   const r = recipes[code]
   return {
@@ -55,6 +73,7 @@ function dish(code: string, ingredients: Ingredient[], batch: boolean): Dish {
     howTo: r.howTo,
     storage: r.storage,
     batch,
+    ...(COOK_SPECS[code] ? { cook: COOK_SPECS[code] } : {}),
   }
 }
 
@@ -133,7 +152,7 @@ function buildMenu() {
 
 export function createSeed(today = new Date()): AppData {
   return {
-    version: 1,
+    version: 2,
     products: structuredClone(PRODUCTS),
     dishes: structuredClone(DISHES),
     menu: buildMenu(),
@@ -153,5 +172,6 @@ export function createSeed(today = new Date()): AppData {
     cookTail: sheet.tail,
     checks: {},
     leftovers: {},
+    prices: {},
   }
 }

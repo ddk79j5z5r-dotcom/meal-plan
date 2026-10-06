@@ -1,103 +1,391 @@
-import { useState } from 'react'
-import { cookingPlan, formatBulk, productMap } from '../domain/plan'
+import { useState, type ReactNode } from 'react'
+import { addDays, formatShort, parseISO, weekStart } from '../domain/calendar'
+import {
+  containerCount,
+  containerPlan,
+  COOL_MINUTES,
+  cookingPlan,
+  eveningTransfers,
+  formatClock,
+  formatDuration,
+  midweekPlan,
+  schedule,
+  specOf,
+  type CookRow,
+  type Place,
+  type Portion,
+} from '../domain/cooking'
+import { formatAmount, formatBulk, productMap, type ProductMap } from '../domain/plan'
 import type { Dish } from '../domain/types'
 import { PEOPLE } from '../domain/types'
 import { useData, useStore } from '../store'
 import { Check, useCurrentWeek, WeekPicker } from './common'
-import { DishSheet, shortName } from './DishSheet'
 import { CATEGORY_COLOR, tint } from './colors'
+import { DishSheet, shortName } from './DishSheet'
+
+type View = 'time' | 'what' | 'boxes' | 'recipes'
+
+const PLACE: Record<Place, { icon: string; label: string }> = {
+  fridge: { icon: '🧊', label: 'холодильник' },
+  freezer: { icon: '❄️', label: 'морозилка' },
+  fresh: { icon: '🍳', label: 'готовить в середине недели' },
+}
+
+const weekday = new Intl.DateTimeFormat('ru-RU', { weekday: 'short' })
 
 export function CookTab() {
   const data = useData()
-  const toggle = useStore((s) => s.toggle)
   const [week, setWeek] = useState(useCurrentWeek())
+  const [view, setView] = useState<View>('time')
   const [open, setOpen] = useState<Dish | null>(null)
   const products = productMap(data.products)
   const plan = cookingPlan(data)
-  const people = data.settings.people
-  const stepKey = (n: number) => `step:w${week}:${n}`
+  const sched = schedule(plan)
+  const boxes = containerCount(data)
+  const fridge = plan.reduce((n, r) => n + r.fridge, 0)
+  const freezer = plan.reduce((n, r) => n + r.freezer, 0)
+  const thaw = plan.filter((r) => r.dish.cook?.thaw)
+  const start = weekStart(data.settings.startDate, week)
+  const dayLabel = (day: number) => {
+    const iso = addDays(start, day)
+    return `День ${day + 1} · ${weekday.format(parseISO(iso))}, ${formatShort(iso)}`
+  }
+
   // A dish takes the colour of its main (first) ingredient's category.
   const dishColor = (d: Dish) => {
     const p = products.get(d.ingredients[0]?.productId)
     return p ? CATEGORY_COLOR[p.category] : 'var(--muted)'
   }
-  const doneSteps = data.cookSteps.filter((s) => data.checks[stepKey(s.n)]).length
 
   return (
     <div className="page">
       <WeekPicker week={week} onChange={setWeek} />
 
-      <h3 className="cat" style={tint('var(--cook)')}>
-        <span aria-hidden>🥘</span> Что готовим на неделю · на двоих
-      </h3>
-      <ul className="card list">
-        {plan.map((row) => (
-          <li key={row.dish.id} className="dot-row" style={tint(dishColor(row.dish))}>
-            <button className="item tappable" onClick={() => setOpen(row.dish)}>
-              <span className="item-name">
-                {row.dish.code && <span className="code">{row.dish.code}</span>} {row.dish.name}
-              </span>
-              <span className="small">
-                {row.totals
-                  .map((t) => ({ t, p: products.get(t.productId) }))
-                  .filter(({ p }) => p && p.category !== 'Масла и специи')
-                  .map(({ t, p }) => `${shortName(p!)} ${formatBulk(p!, t.amount)}`)
-                  .join(', ')}
-              </span>
-              <span className="muted small">
-                {PEOPLE.filter((p) => row.portions[p].count > 0)
-                  .map((p) => `${people[p].name}: ${row.portions[p].count} порц. (дни ${row.portions[p].days.join(', ')})`)
-                  .join(' · ')}
-              </span>
-              <span className="chev">›</span>
-            </button>
-          </li>
-        ))}
-      </ul>
+      <section className="card summary hero cook-hero">
+        <div>
+          <b>≈ {formatDuration(sched.total)}</b>
+          <span className="muted small">
+            {plan.length} блюд · {boxes} контейнеров на неделю · 🧊 {fridge} порц. · ❄️ {freezer} порц.
+          </span>
+        </div>
+      </section>
 
-      <h3 className="cat" style={tint('var(--cook)')}>
-        <span aria-hidden>⏱</span> Порядок работы · {doneSteps}/{data.cookSteps.length}
-      </h3>
-      <ul className="card list steps tinted" style={tint('var(--cook)')}>
-        {data.cookSteps.map((s) => {
-          const done = !!data.checks[stepKey(s.n)]
-          return (
-            <li key={s.n} className={done ? 'done' : ''}>
-              <div className="shop-row">
-                <Check checked={done} onChange={() => toggle(stepKey(s.n))} label={`Шаг ${s.n}`} />
-                <div className="item">
-                  <span className="item-name">
-                    <span className="code">{s.time}</span> {s.what}
-                  </span>
-                  {s.note && <span className="muted small">{s.note}</span>}
-                </div>
-              </div>
-            </li>
-          )
-        })}
-      </ul>
-      <p className="muted small">{data.cookTail}</p>
-      <p className="muted small">Порядок работы написан под исходное меню — если вы сильно поменяли блюда, используйте его как ориентир.</p>
-
-      <h3 className="cat" style={tint('var(--cook)')}>
-        <span aria-hidden>📖</span> Все рецепты
-      </h3>
-      <ul className="card list">
-        {data.dishes
-          .filter((d) => d.howTo)
-          .map((d) => (
-            <li key={d.id} className="dot-row" style={tint(dishColor(d))}>
-              <button className="item tappable" onClick={() => setOpen(d)}>
-                <span className="item-name">
-                  {d.code && <span className="code">{d.code}</span>} {d.name}
-                </span>
-                <span className="chev">›</span>
-              </button>
-            </li>
+      {thaw.length > 0 && (
+        <div className="banner">
+          <b>🌙 Накануне вечером</b>
+          {thaw.map((r) => (
+            <span key={r.dish.id} className="small">
+              {capitalize(r.dish.cook!.thaw!)} — {formatTotals(r, products)}
+            </span>
           ))}
-      </ul>
+        </div>
+      )}
+
+      <div className="seg">
+        {(
+          [
+            ['time', 'По шагам'],
+            ['what', 'Блюда'],
+            ['boxes', 'Контейнеры'],
+            ['recipes', 'Рецепты'],
+          ] as const
+        ).map(([k, label]) => (
+          <button key={k} className={view === k ? 'on' : ''} onClick={() => setView(k)}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {view === 'time' && <Timeline week={week} plan={plan} products={products} dishColor={dishColor} onOpen={setOpen} />}
+      {view === 'what' && <WhatToCook plan={plan} products={products} dishColor={dishColor} dayLabel={dayLabel} onOpen={setOpen} />}
+      {view === 'boxes' && <Containers products={products} dayLabel={dayLabel} />}
+      {view === 'recipes' && (
+        <ul className="card list">
+          {data.dishes
+            .filter((d) => d.howTo)
+            .map((d) => (
+              <li key={d.id} className="dot-row" style={tint(dishColor(d))}>
+                <button className="item tappable" onClick={() => setOpen(d)}>
+                  <span className="item-name">
+                    {d.code && <span className="code">{d.code}</span>} {d.name}
+                  </span>
+                  <span className="chev">›</span>
+                </button>
+              </li>
+            ))}
+        </ul>
+      )}
 
       {open && <DishSheet dish={open} onClose={() => setOpen(null)} />}
     </div>
+  )
+}
+
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+
+function formatTotals(row: CookRow, products: ProductMap) {
+  return row.totals
+    .map((t) => ({ t, p: products.get(t.productId) }))
+    .filter(({ p }) => p && p.category !== 'Масла и специи')
+    .map(({ t, p }) => `${shortName(p!)} ${formatBulk(p!, t.amount)}`)
+    .join(', ')
+}
+
+// ---------- Timeline ----------
+
+interface Event {
+  at: number
+  order: number
+  key?: string
+  color?: string
+  body: ReactNode
+}
+
+function Timeline({
+  week,
+  plan,
+  products,
+  dishColor,
+  onOpen,
+}: {
+  week: number
+  plan: CookRow[]
+  products: ProductMap
+  dishColor: (d: Dish) => string
+  onOpen: (d: Dish) => void
+}) {
+  const data = useData()
+  const toggle = useStore((s) => s.toggle)
+  const sched = schedule(plan)
+  const key = (k: string) => `cook:w${week}:${k}`
+  const events: Event[] = []
+
+  if (sched.preheat) {
+    events.push({
+      at: sched.preheat.at,
+      order: 0,
+      key: key('preheat'),
+      color: 'var(--cook)',
+      body: (
+        <>
+          <span className="item-name">♨️ Включить духовку на {sched.preheat.temp} °C</span>
+          <span className="muted small">Пока греется — подготовьте противни, пергамент и фольгу.</span>
+        </>
+      ),
+    })
+  }
+
+  for (const p of sched.placed) {
+    const { dish } = p.row
+    const s = p.spec
+    const oven = s.where === 'oven'
+    events.push({
+      at: p.start - s.prep,
+      order: 1,
+      key: key(dish.id),
+      color: dishColor(dish),
+      body: (
+        <button className="timeline-body tappable" onClick={() => onOpen(dish)}>
+          <span className="item-name">
+            {oven ? '♨️' : '🔥'} {dish.code && <span className="code">{dish.code}</span>} {dish.name}
+          </span>
+          <span className="small">{formatTotals(p.row, products)}</span>
+          {s.prepText && <span className="muted small">{capitalize(s.prepText)}.</span>}
+          <span className="small timeline-heat">
+            {p.setTemp != null && <b>Переключить духовку на {p.setTemp} °C. </b>}
+            {oven ? (
+              <>
+                В духовку ({p.ovenTemp ?? s.temp} °C{p.ovenTemp != null && s.temp != null && p.ovenTemp !== s.temp ? `, по рецепту ${s.temp} °C — проверьте готовность` : ''}) в {formatClock(p.start)} на {s.minutes} мин
+              </>
+            ) : (
+              <>
+                На плиту в {formatClock(p.start)} на {s.minutes} мин{s.attended ? ', стоять рядом и помешивать' : ''}
+              </>
+            )}
+          </span>
+        </button>
+      ),
+    })
+    events.push({
+      at: p.end,
+      order: -1,
+      body: (
+        <span className="muted small timeline-done">
+          ⏰ {oven ? 'Достать' : 'Снять с огня'}: {dish.name}
+          {dish.code === 'Р13' ? ' — дать постоять 10 мин под крышкой' : ''}
+          {dish.code === 'Р2' ? ' — переложить в холодную воду' : ''}
+        </span>
+      ),
+    })
+  }
+
+  events.push(
+    {
+      at: sched.cookedAt,
+      order: 2,
+      key: key('cool'),
+      color: 'var(--snack)',
+      body: (
+        <>
+          <span className="item-name">🌬 Остудить {COOL_MINUTES} мин</span>
+          <span className="muted small">Крышки контейнеров приоткрыты, рис — тонким слоем. Горячее в закрытый контейнер не убирать.</span>
+        </>
+      ),
+    },
+    {
+      at: sched.cookedAt + COOL_MINUTES,
+      order: 2,
+      key: key('pack'),
+      color: 'var(--cat-dairy)',
+      body: (
+        <>
+          <span className="item-name">📦 Разложить по контейнерам и подписать</span>
+          <span className="muted small">🧊 Дни 1–3 — в холодильник, ❄️ остальное — в морозилку. Что куда — во вкладке «Контейнеры».</span>
+        </>
+      ),
+    },
+  )
+  events.sort((a, b) => a.at - b.at || a.order - b.order)
+  const keyed = events.filter((e) => e.key)
+  const done = keyed.filter((e) => data.checks[e.key!]).length
+
+  return (
+    <>
+      <p className="muted small">
+        Сделано {done} из {keyed.length}. Время — от начала готовки. Духовка вмещает 2 противня, на плите 4 конфорки; пока что-то варится, готовьте следующее.
+      </p>
+      <ol className="timeline card">
+        {events.map((e, i) => (
+          <li key={i} className={`${e.key ? '' : 'minor'} ${e.key && data.checks[e.key] ? 'done' : ''}`} style={e.color ? tint(e.color) : undefined}>
+            <span className="time-chip">{formatClock(e.at)}</span>
+            {e.key ? <Check checked={!!data.checks[e.key]} onChange={() => toggle(e.key!)} label="Сделано" /> : <span className="check placeholder" />}
+            <div className="timeline-content">{e.body}</div>
+          </li>
+        ))}
+      </ol>
+      <p className="muted small">💡 {data.cookTail}</p>
+    </>
+  )
+}
+
+// ---------- What to cook ----------
+
+function WhatToCook({
+  plan,
+  products,
+  dishColor,
+  dayLabel,
+  onOpen,
+}: {
+  plan: CookRow[]
+  products: ProductMap
+  dishColor: (d: Dish) => string
+  dayLabel: (day: number) => string
+  onOpen: (d: Dish) => void
+}) {
+  const data = useData()
+  const people = data.settings.people
+  const midweek = midweekPlan(data)
+  const row = (r: CookRow) => (
+    <li key={r.dish.id} className="dot-row" style={tint(dishColor(r.dish))}>
+      <button className="item tappable" onClick={() => onOpen(r.dish)}>
+        <span className="item-name">
+          {r.dish.code && <span className="code">{r.dish.code}</span>} {r.dish.name}
+        </span>
+        <span className="small">{formatTotals(r, products)}</span>
+        {PEOPLE.filter((p) => r.portions[p].count > 0).map((p) => (
+          <span key={p} className="muted small">
+            <i className={`swatch p-${p}`} aria-hidden /> {people[p].name}: {r.portions[p].count} порц. · дни {r.portions[p].days.join(', ')}
+          </span>
+        ))}
+        <span className="muted small">
+          {specOf(r.dish).where === 'oven' ? `♨️ ${specOf(r.dish).temp} °C` : '🔥 плита'} · {specOf(r.dish).minutes} мин
+          {r.fridge > 0 && ` · 🧊 ${r.fridge}`}
+          {r.freezer > 0 && ` · ❄️ ${r.freezer}`}
+        </span>
+        <span className="chev">›</span>
+      </button>
+    </li>
+  )
+
+  return (
+    <>
+      <h3 className="cat" style={tint('var(--cook)')}>
+        <span aria-hidden>🥘</span> В день готовки · на двоих
+      </h3>
+      <ul className="card list">{plan.map(row)}</ul>
+      {midweek.length > 0 && (
+        <>
+          <h3 className="cat" style={tint('var(--lunch)')}>
+            <span aria-hidden>🍳</span> В середине недели
+          </h3>
+          <p className="muted small">Эти блюда плохо переносят заморозку — на конец недели их проще приготовить свежими.</p>
+          {midweek.map((m) => (
+            <section key={m.day}>
+              <p className="small">
+                <b>{dayLabel(m.day)}</b>
+              </p>
+              <ul className="card list">{m.rows.map(row)}</ul>
+            </section>
+          ))}
+        </>
+      )}
+    </>
+  )
+}
+
+// ---------- Containers ----------
+
+function portionText(p: Portion, products: ProductMap) {
+  const main = p.ingredients[0]
+  return `${p.dish.name}${main ? ` ${formatAmount(products.get(main.productId), main.amount)}` : ''}`
+}
+
+function Containers({ products, dayLabel }: { products: ProductMap; dayLabel: (day: number) => string }) {
+  const data = useData()
+  const people = data.settings.people
+  const days = containerPlan(data)
+  const midweek = midweekPlan(data)
+
+  return (
+    <>
+      <p className="muted small">
+        🧊 холодильник · ❄️ морозилка (достать вечером накануне) · 🍳 приготовить свежим в середине недели
+      </p>
+      {days.map(({ day, boxes }) => {
+        const transfers = day > 0 ? eveningTransfers(data, day - 1) : []
+        const cookToday = midweek.find((m) => m.day === day)
+        return (
+          <section key={day} className="card day-card">
+            <h3>{dayLabel(day)}</h3>
+            {transfers.length > 0 && (
+              <p className="small note">
+                ❄️→🧊 Вечером дня {day} достать из морозилки: {transfers.map((p) => `${p.dish.name.toLowerCase()} (${people[p.person].name})`).join(', ')}
+              </p>
+            )}
+            {cookToday && (
+              <p className="small note">
+                🍳 Сегодня приготовить: {cookToday.rows.map((r) => `${r.dish.name.toLowerCase()} (${formatTotals(r, products)})`).join('; ')}
+              </p>
+            )}
+            {boxes.length === 0 && <p className="muted small">Без контейнеров.</p>}
+            <ul className="boxes">
+              {boxes.map((b, i) => (
+                <li key={i} style={tint(`var(--${b.person})`)}>
+                  <span className="box-who">
+                    <i className={`swatch p-${b.person}`} aria-hidden /> {people[b.person].name} · {b.meal}
+                  </span>
+                  {b.portions.map((p, j) => (
+                    <span key={j} className="small box-item">
+                      <span title={PLACE[p.place].label}>{PLACE[p.place].icon}</span> {portionText(p, products)}
+                    </span>
+                  ))}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )
+      })}
+    </>
   )
 }

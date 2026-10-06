@@ -988,3 +988,297 @@ h3.cat {
 .meal-name {
   color: var(--c, var(--text));
 }
+
+/* ---------- Prices & statistics ---------- */
+
+.summary-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.price-input {
+  flex: none;
+  width: 128px;
+}
+
+.price-input.changed {
+  border-color: var(--c, var(--accent));
+}
+
+/* Status: ▲ up = more expensive, ▼ down = cheaper; always with the arrow, never colour alone */
+.delta {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.delta.up {
+  color: var(--danger);
+}
+
+.delta.down {
+  color: var(--lunch);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.price-history .row {
+  flex-wrap: nowrap;
+  gap: 4px;
+}
+
+.kpis {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.kpi {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.kpi.wide {
+  grid-column: 1 / -1;
+}
+
+.kpi b {
+  font-size: 1.25rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi.wide b {
+  font-size: 1.7rem;
+}
+
+.swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  vertical-align: 0;
+  background: var(--c, var(--muted));
+}
+
+.swatch.p-he {
+  background: var(--he);
+}
+
+.swatch.p-she {
+  background: var(--she);
+}
+
+/* Weekly bars — one series, one hue; the current week is outlined */
+.vbars {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.vbar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.vbar-value {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.vbar-track {
+  width: 100%;
+  max-width: 48px;
+  height: 120px;
+  display: flex;
+  align-items: flex-end;
+}
+
+.vbar-fill {
+  width: 100%;
+  min-height: 4px;
+  border-radius: 4px 4px 0 0;
+  background: var(--c);
+  opacity: 0.55;
+}
+
+.vbar.current .vbar-fill {
+  opacity: 1;
+}
+
+.vbar-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.vbar.current .vbar-label {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.hbars,
+.top-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hbar-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+.hbar-track {
+  height: 10px;
+}
+
+.hbar-fill {
+  height: 100%;
+  min-width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: var(--c);
+}
+
+.top-list li {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.top-name {
+  min-width: 0;
+}
+
+/* ---------- Cooking plan ---------- */
+
+.cook-hero b {
+  color: var(--cook);
+}
+
+.banner.night {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--dinner) 22%, var(--surface)), color-mix(in srgb, var(--cat-dairy) 18%, var(--surface)));
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 6px 14px;
+  gap: 0;
+}
+
+.timeline li {
+  display: grid;
+  grid-template-columns: 42px 28px 1fr;
+  gap: 8px;
+  align-items: start;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.timeline li:first-child {
+  border-top: 0;
+}
+
+.timeline li.minor {
+  padding: 4px 0;
+  border-top: 0;
+}
+
+.time-chip {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: 3px 0;
+  text-align: center;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--c, var(--muted)) 14%, var(--surface));
+  color: var(--text);
+}
+
+.timeline li.minor .time-chip {
+  background: transparent;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.timeline-content,
+.timeline-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.timeline-heat {
+  margin-top: 2px;
+  padding-left: 8px;
+  border-left: 3px solid var(--c, var(--cook));
+}
+
+.timeline li.done .timeline-content {
+  opacity: 0.5;
+}
+
+.timeline-done {
+  padding-top: 3px;
+}
+
+.day-card h3 {
+  font-size: 1rem;
+}
+
+.note {
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+
+.boxes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.boxes li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--c) 7%, var(--surface));
+  box-shadow: inset 3px 0 0 var(--c);
+}
+
+.box-who {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.cook-spec {
+  background: var(--surface-2);
+}
+
+.seg button {
+  font-size: 0.85rem;
+  padding: 0 4px;
+}

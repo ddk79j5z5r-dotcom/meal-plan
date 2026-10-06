@@ -50,6 +50,29 @@ export interface Ingredient {
   amount: number
 }
 
+/** How a batch dish is cooked on the cooking day and how long it keeps. */
+export interface CookSpec {
+  where: 'oven' | 'stove'
+  /** Oven temperature, °C. */
+  temp?: number
+  /** Time on the stove / in the oven, minutes. */
+  minutes: number
+  /** Hands-on preparation before it goes on the heat, minutes. */
+  prep: number
+  /** The cook must stay at the stove the whole time (e.g. frying mince). */
+  attended?: boolean
+  /** What to do during preparation. */
+  prepText: string
+  /** Last menu day (1 = cooking day) the dish can be kept in the fridge. */
+  fridgeDays: number
+  /** Portions beyond `fridgeDays` go to the freezer; otherwise they are cooked fresh mid-week. */
+  freezes: boolean
+  /** Reminder for the evening before the cooking day. */
+  thaw?: string
+  /** Kept as is, without a food container (eggs in their shells). */
+  loose?: boolean
+}
+
 export interface Dish {
   id: string
   code?: string
@@ -61,6 +84,7 @@ export interface Dish {
   storage: string
   /** Cooked on the weekly cooking day. */
   batch: boolean
+  cook?: CookSpec
   custom?: boolean
 }
 
@@ -109,7 +133,7 @@ export interface CookStep {
 }
 
 export interface AppData {
-  version: 1
+  version: 2
   products: Product[]
   dishes: Dish[]
   menu: Menu
@@ -121,4 +145,9 @@ export interface AppData {
   checks: Record<string, boolean>
   /** Manual leftover overrides in base units, keyed by period key + product id. */
   leftovers: Record<string, number>
+  /**
+   * Price changes: product id → { week number → price per buy unit }.
+   * A price applies from its week onwards until the next change; before the first one, `Product.price` applies.
+   */
+  prices: Record<string, Record<string, number>>
 }
