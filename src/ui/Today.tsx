@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { addDays, formatLong, planDay, toISO } from '../domain/calendar'
-import { addN, formatInt, nutritionOf, productMap, ZERO } from '../domain/plan'
+import { addN, nutritionOf, productMap, ZERO } from '../domain/plan'
 import type { Dish, MealItem, PersonId } from '../domain/types'
 import { useData, useStore } from '../store'
-import { Bar, Check, PersonToggle } from './common'
+import { Bar, Check, Macros, PersonToggle } from './common'
+import { mealStyle, tint } from './colors'
 import { DishSheet, itemDetails, itemName } from './DishSheet'
 import type { Tab } from '../App'
 
@@ -68,22 +69,26 @@ export function Today({ person, setPerson, go }: { person: PersonId; setPerson: 
       <PersonToggle value={person} onChange={setPerson} />
 
       <div className="card">
-        <Bar label="Калории" value={eaten.kcal} target={target.kcal} unit="ккал" />
-        <Bar label="Белок" value={eaten.p} target={target.protein} unit="г" />
-        <p className="muted small">
-          По меню за день: {formatInt(planned.kcal)} ккал · Б {formatInt(planned.p)} · Ж {formatInt(planned.f)} · У {formatInt(planned.c)}
+        <Bar label="Калории" value={eaten.kcal} target={target.kcal} unit="ккал" color="var(--kcal)" />
+        <Bar label="Белок" value={eaten.p} target={target.protein} unit="г" color="var(--protein)" />
+        <p className="small">
+          <span className="muted">По меню за день: </span>
+          <Macros n={planned} />
         </p>
       </div>
 
       {day.map((meal, mi) => {
         const done = !!data.checks[eatenKey(mi)]
+        const ms = mealStyle(meal.name)
         return (
-          <section key={mi} className={`card meal ${done ? 'done' : ''}`}>
+          <section key={mi} className={`card meal tinted ${done ? 'done' : ''}`} style={tint(ms.color)}>
             <header className="meal-head">
               <Check checked={done} onChange={() => toggle(eatenKey(mi))} label={`${meal.name}: съедено`} />
-              <h3>{meal.name}</h3>
-              <span className="muted small">
-                {formatInt(mealN[mi].kcal)} ккал · Б {formatInt(mealN[mi].p)}
+              <h3>
+                <span aria-hidden>{ms.icon}</span> {meal.name}
+              </h3>
+              <span className="small">
+                <Macros n={mealN[mi]} short />
               </span>
             </header>
             <ul className="items">

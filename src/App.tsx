@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { PersonId } from './domain/types'
+import { tint } from './ui/colors'
 import { CookTab } from './ui/CookTab'
 import { MenuTab } from './ui/MenuTab'
 import { SettingsTab } from './ui/SettingsTab'
@@ -8,12 +9,12 @@ import { Today } from './ui/Today'
 
 export type Tab = 'today' | 'menu' | 'shop' | 'cook' | 'settings'
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'today', label: 'Сегодня', icon: '🍽' },
-  { id: 'menu', label: 'Меню', icon: '📋' },
-  { id: 'shop', label: 'Покупки', icon: '🛒' },
-  { id: 'cook', label: 'Готовка', icon: '🍳' },
-  { id: 'settings', label: 'Настройки', icon: '⚙️' },
+const TABS: { id: Tab; label: string; icon: string; color: string }[] = [
+  { id: 'today', label: 'Сегодня', icon: '🍽', color: 'var(--accent)' },
+  { id: 'menu', label: 'Меню', icon: '📋', color: 'var(--dinner)' },
+  { id: 'shop', label: 'Покупки', icon: '🛒', color: 'var(--cat-meat)' },
+  { id: 'cook', label: 'Готовка', icon: '🍳', color: 'var(--cook)' },
+  { id: 'settings', label: 'Настройки', icon: '⚙️', color: 'var(--cat-dairy)' },
 ]
 
 const readHash = (): Tab => {
@@ -52,10 +53,13 @@ export default function App() {
     }
   }
 
+  const current = TABS.find((t) => t.id === tab)!
   return (
-    <>
+    <div className={`app person-${person}`} style={tint(current.color)}>
       <header className="top">
-        <h1>{TABS.find((t) => t.id === tab)!.label}</h1>
+        <h1>
+          <span aria-hidden>{current.icon}</span> {current.label}
+        </h1>
       </header>
       <main>
         {tab === 'today' && <Today person={person} setPerson={setPerson} go={go} />}
@@ -66,7 +70,7 @@ export default function App() {
       </main>
       <nav className="tabs">
         {TABS.map((t) => (
-          <button key={t.id} className={tab === t.id ? 'on' : ''} onClick={() => go(t.id)} aria-current={tab === t.id ? 'page' : undefined}>
+          <button key={t.id} className={tab === t.id ? 'on' : ''} style={tint(t.color)} onClick={() => go(t.id)} aria-current={tab === t.id ? 'page' : undefined}>
             <span className="tab-icon" aria-hidden>
               {t.icon}
             </span>
@@ -74,6 +78,6 @@ export default function App() {
           </button>
         ))}
       </nav>
-    </>
+    </div>
   )
 }

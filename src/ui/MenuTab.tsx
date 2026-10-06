@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { dayNutrition, formatInt, nutritionOf, productMap } from '../domain/plan'
 import { CATEGORIES, type AppData, type Dish, type Ingredient, type PersonId, type Product, type Unit } from '../domain/types'
 import { uid, useData, useStore } from '../store'
-import { Field, NumInput, PersonToggle, Sheet } from './common'
+import { Field, Macros, NumInput, PersonToggle, Sheet } from './common'
+import { CATEGORY_COLOR, CATEGORY_ICON, mealStyle, tint } from './colors'
 import { itemDetails, itemName } from './DishSheet'
 
 type Sub = 'menu' | 'dishes' | 'products'
@@ -57,16 +58,17 @@ function WeekMenu({ person, setPerson }: { person: PersonId; setPerson: (p: Pers
         ))}
       </div>
       <div className="card totals">
-        <Stat label="ккал" value={total.kcal} target={target.kcal} />
-        <Stat label="белок" value={total.p} target={target.protein} lowOnly />
-        <Stat label="жиры" value={total.f} />
-        <Stat label="углев." value={total.c} />
+        <Stat label="ккал" value={total.kcal} target={target.kcal} color="var(--kcal)" />
+        <Stat label="белок" value={total.p} target={target.protein} lowOnly color="var(--protein)" />
+        <Stat label="жиры" value={total.f} color="var(--fat)" />
+        <Stat label="углев." value={total.c} color="var(--carbs)" />
       </div>
       <p className="muted small">Правки меняют шаблон: этот день повторяется каждую неделю. Закупки и план готовки пересчитаются сами.</p>
 
       {meals.map((meal, mi) => (
-        <section key={mi} className="card meal">
+        <section key={mi} className="card meal tinted" style={tint(mealStyle(meal.name).color)}>
           <header className="meal-head">
+            <span aria-hidden>{mealStyle(meal.name).icon}</span>
             <input
               className="meal-name"
               value={meal.name}
@@ -188,11 +190,11 @@ function CopyDay({ person, day }: { person: PersonId; day: number }) {
   )
 }
 
-function Stat({ label, value, target, lowOnly }: { label: string; value: number; target?: number; lowOnly?: boolean }) {
+function Stat({ label, value, target, lowOnly, color }: { label: string; value: number; target?: number; lowOnly?: boolean; color: string }) {
   const off = target ? value / target : 1
   const cls = target ? (off < 0.9 ? 'low' : off > 1.1 && !lowOnly ? 'high' : 'ok') : ''
   return (
-    <div className={`stat ${cls}`}>
+    <div className={`stat ${cls}`} style={tint(color)}>
       <b>{formatInt(value)}</b>
       <span>
         {label}
@@ -359,7 +361,7 @@ function DishEditor({ id, onClose }: { id: string; onClose: () => void }) {
       <h3>Состав на 1 порцию</h3>
       <IngredientsEditor value={dish.ingredients} products={data.products} onChange={(next) => set((d) => (d.ingredients = next))} />
       <p className="macros">
-        {formatInt(n.kcal)} ккал · Б {formatInt(n.p)} · Ж {formatInt(n.f)} · У {formatInt(n.c)}
+        <Macros n={n} />
       </p>
       <Field label="Приготовление">
         <textarea rows={5} value={dish.howTo} onChange={(e) => set((d) => (d.howTo = e.target.value))} />
@@ -422,8 +424,10 @@ function ProductList() {
       </button>
       {CATEGORIES.map((cat) => (
         <section key={cat}>
-          <h3 className="cat">{cat}</h3>
-          <ul className="card list">
+          <h3 className="cat" style={tint(CATEGORY_COLOR[cat])}>
+            <span aria-hidden>{CATEGORY_ICON[cat]}</span> {cat}
+          </h3>
+          <ul className="card list tinted" style={tint(CATEGORY_COLOR[cat])}>
             {data.products
               .filter((p) => p.category === cat)
               .map((p) => (

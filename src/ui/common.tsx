@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { formatRange, planDay, toISO } from '../domain/calendar'
-import type { PersonId } from '../domain/types'
+import type { Nutrition, PersonId } from '../domain/types'
+import { tint } from './colors'
 import { useData } from '../store'
 
 export function Sheet({ title, onClose, children }: { title: ReactNode; onClose: () => void; children: ReactNode }) {
@@ -88,9 +89,9 @@ export function Check({ checked, onChange, label }: { checked: boolean; onChange
 export function PersonToggle({ value, onChange }: { value: PersonId; onChange: (p: PersonId) => void }) {
   const { people } = useData().settings
   return (
-    <div className="seg" role="tablist">
+    <div className="seg person-seg" role="tablist">
       {(['he', 'she'] as const).map((p) => (
-        <button key={p} role="tab" aria-selected={value === p} className={value === p ? 'on' : ''} onClick={() => onChange(p)}>
+        <button key={p} role="tab" aria-selected={value === p} className={`p-${p} ${value === p ? 'on' : ''}`} onClick={() => onChange(p)}>
           {people[p].name}
         </button>
       ))}
@@ -98,10 +99,10 @@ export function PersonToggle({ value, onChange }: { value: PersonId; onChange: (
   )
 }
 
-export function Bar({ label, value, target, unit }: { label: string; value: number; target: number; unit: string }) {
+export function Bar({ label, value, target, unit, color }: { label: string; value: number; target: number; unit: string; color: string }) {
   const pct = target > 0 ? Math.min(100, (value / target) * 100) : 0
   return (
-    <div className="bar">
+    <div className="bar" style={tint(color)}>
       <div className="bar-label">
         <span>{label}</span>
         <span>
@@ -112,6 +113,23 @@ export function Bar({ label, value, target, unit }: { label: string; value: numb
         <div className="bar-fill" style={{ width: `${pct}%` }} />
       </div>
     </div>
+  )
+}
+
+/** «474 ккал · Б 46 · Ж 19 · У 30» with each nutrient in its own colour. */
+export function Macros({ n, short }: { n: Nutrition; short?: boolean }) {
+  const r = (x: number) => Math.round(x).toLocaleString('ru-RU')
+  return (
+    <span className="macro-line">
+      <span className="m-kcal">{r(n.kcal)} ккал</span>
+      <span className="m-p">Б {r(n.p)}</span>
+      {!short && (
+        <>
+          <span className="m-f">Ж {r(n.f)}</span>
+          <span className="m-c">У {r(n.c)}</span>
+        </>
+      )}
+    </span>
   )
 }
 

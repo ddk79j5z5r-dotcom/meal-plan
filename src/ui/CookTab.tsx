@@ -5,6 +5,7 @@ import { PEOPLE } from '../domain/types'
 import { useData, useStore } from '../store'
 import { Check, useCurrentWeek, WeekPicker } from './common'
 import { DishSheet, shortName } from './DishSheet'
+import { CATEGORY_COLOR, tint } from './colors'
 
 export function CookTab() {
   const data = useData()
@@ -15,16 +16,23 @@ export function CookTab() {
   const plan = cookingPlan(data)
   const people = data.settings.people
   const stepKey = (n: number) => `step:w${week}:${n}`
+  // A dish takes the colour of its main (first) ingredient's category.
+  const dishColor = (d: Dish) => {
+    const p = products.get(d.ingredients[0]?.productId)
+    return p ? CATEGORY_COLOR[p.category] : 'var(--muted)'
+  }
   const doneSteps = data.cookSteps.filter((s) => data.checks[stepKey(s.n)]).length
 
   return (
     <div className="page">
       <WeekPicker week={week} onChange={setWeek} />
 
-      <h3 className="cat">Что готовим на неделю · на двоих</h3>
+      <h3 className="cat" style={tint('var(--cook)')}>
+        <span aria-hidden>🥘</span> Что готовим на неделю · на двоих
+      </h3>
       <ul className="card list">
         {plan.map((row) => (
-          <li key={row.dish.id}>
+          <li key={row.dish.id} className="dot-row" style={tint(dishColor(row.dish))}>
             <button className="item tappable" onClick={() => setOpen(row.dish)}>
               <span className="item-name">
                 {row.dish.code && <span className="code">{row.dish.code}</span>} {row.dish.name}
@@ -47,10 +55,10 @@ export function CookTab() {
         ))}
       </ul>
 
-      <h3 className="cat">
-        Порядок работы · {doneSteps}/{data.cookSteps.length}
+      <h3 className="cat" style={tint('var(--cook)')}>
+        <span aria-hidden>⏱</span> Порядок работы · {doneSteps}/{data.cookSteps.length}
       </h3>
-      <ul className="card list steps">
+      <ul className="card list steps tinted" style={tint('var(--cook)')}>
         {data.cookSteps.map((s) => {
           const done = !!data.checks[stepKey(s.n)]
           return (
@@ -71,12 +79,14 @@ export function CookTab() {
       <p className="muted small">{data.cookTail}</p>
       <p className="muted small">Порядок работы написан под исходное меню — если вы сильно поменяли блюда, используйте его как ориентир.</p>
 
-      <h3 className="cat">Все рецепты</h3>
+      <h3 className="cat" style={tint('var(--cook)')}>
+        <span aria-hidden>📖</span> Все рецепты
+      </h3>
       <ul className="card list">
         {data.dishes
           .filter((d) => d.howTo)
           .map((d) => (
-            <li key={d.id}>
+            <li key={d.id} className="dot-row" style={tint(dishColor(d))}>
               <button className="item tappable" onClick={() => setOpen(d)}>
                 <span className="item-name">
                   {d.code && <span className="code">{d.code}</span>} {d.name}

@@ -13,6 +13,28 @@
   --low: #b5651d;
   --high: #b33a3a;
   --radius: 14px;
+
+  /* People */
+  --he: #3d7be0;
+  --she: #e0528f;
+  /* Nutrients */
+  --kcal: #ef7d22;
+  --protein: #2f8fd8;
+  --fat: #c99700;
+  --carbs: #3fa34d;
+  /* Meals */
+  --breakfast: #f08c1a;
+  --snack: #1fa595;
+  --lunch: #3f9b3c;
+  --dinner: #6b5bd6;
+  /* Product categories */
+  --cat-meat: #d9473f;
+  --cat-dairy: #3b86d6;
+  --cat-bread: #c08a2e;
+  --cat-veg: #43a047;
+  --cat-grocery: #9c6b3d;
+  --cat-oil: #c99a06;
+  --cook: #e8692c;
   --tabbar: 64px;
   color-scheme: light;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Roboto, sans-serif;
@@ -37,6 +59,23 @@
     --danger: #e06c6c;
     --low: #e09a55;
     --high: #e06c6c;
+    --he: #6ea2ff;
+    --she: #ff7eb0;
+    --kcal: #ff9c4d;
+    --protein: #5cb3ff;
+    --fat: #f2cb3c;
+    --carbs: #6cc777;
+    --breakfast: #ffab4a;
+    --snack: #3fd0bd;
+    --lunch: #6cc75f;
+    --dinner: #9a8cff;
+    --cat-meat: #ff6b61;
+    --cat-dairy: #6aa9ff;
+    --cat-bread: #e0ad55;
+    --cat-veg: #6fcf73;
+    --cat-grocery: #c99568;
+    --cat-oil: #f0c43a;
+    --cook: #ff8a50;
     color-scheme: dark;
   }
 }
@@ -784,4 +823,168 @@ details summary {
   .sheet {
     border-radius: 18px;
   }
+}
+
+/* ---------- Colour ---------- */
+/* Components set `--c` (see ui/colors.ts); everything below tints itself from it. */
+
+.app {
+  --person: var(--he);
+}
+
+.app.person-she {
+  --person: var(--she);
+}
+
+.top h1 {
+  color: var(--c, var(--text));
+}
+
+.tabs button.on {
+  color: var(--c);
+}
+
+.tabs button.on .tab-icon {
+  background: color-mix(in srgb, var(--c) 16%, transparent);
+  border-radius: 10px;
+  padding: 0 10px;
+}
+
+/* Cards and lists with a coloured edge and a faint wash */
+.tinted {
+  background: color-mix(in srgb, var(--c) 6%, var(--surface));
+  box-shadow: inset 4px 0 0 var(--c);
+}
+
+.meal-head h3 {
+  color: var(--c, var(--text));
+}
+
+.meal-head > span[aria-hidden] {
+  font-size: 1.2rem;
+}
+
+h3.cat {
+  color: var(--c, var(--muted));
+}
+
+.code {
+  background: color-mix(in srgb, var(--c, var(--muted)) 15%, var(--surface));
+  color: var(--c, var(--muted));
+}
+
+/* Checkboxes follow the surrounding colour */
+.check {
+  border-color: color-mix(in srgb, var(--c, var(--accent)) 45%, var(--line));
+}
+
+.check.on {
+  background: var(--c, var(--accent));
+  border-color: var(--c, var(--accent));
+  color: #fff;
+}
+
+/* Progress bars */
+.bar-track {
+  background: color-mix(in srgb, var(--c) 15%, var(--surface-2));
+}
+
+.bar-fill {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--c) 70%, #fff), var(--c));
+}
+
+.bar-label b {
+  color: var(--c);
+}
+
+/* Nutrient line: «474 ккал · Б 46 · Ж 19 · У 30» */
+.macro-line > span + span::before {
+  content: ' · ';
+  color: var(--muted);
+}
+
+.m-kcal {
+  color: var(--kcal);
+  font-weight: 600;
+}
+
+.m-p {
+  color: var(--protein);
+  font-weight: 600;
+}
+
+.m-f {
+  color: var(--fat);
+}
+
+.m-c {
+  color: var(--carbs);
+}
+
+/* Day totals in the menu editor: a colour stripe under each number */
+.stat::after {
+  content: '';
+  width: 26px;
+  height: 3px;
+  margin-top: 4px;
+  border-radius: 2px;
+  background: var(--c);
+}
+
+/* Person switch and day chips use the selected person's colour */
+.person-seg .p-he.on {
+  background: var(--he);
+  color: #fff;
+}
+
+.person-seg .p-she.on {
+  background: var(--she);
+  color: #fff;
+}
+
+.chips button.on {
+  background: var(--person);
+  color: #fff;
+}
+
+/* Coloured dot before list items (dishes in the cooking plan) */
+.dot-row .item {
+  padding-left: 18px;
+}
+
+.dot-row .item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 16px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--c);
+}
+
+/* Highlights */
+.banner {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--breakfast) 22%, var(--surface)), color-mix(in srgb, var(--cook) 22%, var(--surface)));
+}
+
+.summary.hero {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--c) 18%, var(--surface)), color-mix(in srgb, var(--c) 4%, var(--surface)));
+}
+
+.summary.hero b {
+  color: var(--c);
+}
+
+.picker-mid b {
+  color: var(--c, var(--text));
+}
+
+.tag {
+  background: color-mix(in srgb, var(--cook) 15%, var(--surface));
+  color: var(--cook);
+}
+
+.meal-name {
+  color: var(--c, var(--text));
 }

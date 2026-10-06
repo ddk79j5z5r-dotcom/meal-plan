@@ -4,6 +4,7 @@ import { cycleSummary, formatBuy, formatRub, purchases, sumCost, type PurchaseRo
 import { CATEGORIES } from '../domain/types'
 import { useData, useStore } from '../store'
 import { Check, Field, NumInput, Sheet, useCurrentWeek, WeekPicker } from './common'
+import { CATEGORY_COLOR, CATEGORY_ICON, tint } from './colors'
 
 export function ShopTab() {
   const data = useData()
@@ -26,7 +27,7 @@ export function ShopTab() {
   return (
     <div className="page">
       <WeekPicker week={week} onChange={setWeek} />
-      <div className="card summary">
+      <div className="card summary hero">
         <div>
           <b>{formatRub(total)}</b>
           <span className="muted small">
@@ -41,8 +42,10 @@ export function ShopTab() {
 
       {monthly.length > 0 && (
         <>
-          <h3 className="cat">Раз в месяц · на 4 недели</h3>
-          <RowList rows={monthly} hideBought={hideBought} onOpen={setOpen} />
+          <h3 className="cat" style={tint(CATEGORY_COLOR['Бакалея'])}>
+            <span aria-hidden>📦</span> Раз в месяц · на 4 недели
+          </h3>
+          <RowList rows={monthly} hideBought={hideBought} onOpen={setOpen} color={CATEGORY_COLOR['Бакалея']} />
         </>
       )}
       {CATEGORIES.map((cat) => {
@@ -50,8 +53,10 @@ export function ShopTab() {
         if (rows.length === 0) return null
         return (
           <section key={cat}>
-            <h3 className="cat">{cat}</h3>
-            <RowList rows={rows} hideBought={hideBought} onOpen={setOpen} />
+            <h3 className="cat" style={tint(CATEGORY_COLOR[cat])}>
+              <span aria-hidden>{CATEGORY_ICON[cat]}</span> {cat}
+            </h3>
+            <RowList rows={rows} hideBought={hideBought} onOpen={setOpen} color={CATEGORY_COLOR[cat]} />
           </section>
         )
       })}
@@ -63,13 +68,13 @@ export function ShopTab() {
   )
 }
 
-function RowList({ rows, hideBought, onOpen }: { rows: PurchaseRow[]; hideBought: boolean; onOpen: (r: PurchaseRow) => void }) {
+function RowList({ rows, hideBought, onOpen, color }: { rows: PurchaseRow[]; hideBought: boolean; onOpen: (r: PurchaseRow) => void; color: string }) {
   const data = useData()
   const toggle = useStore((s) => s.toggle)
   const visible = rows.filter((r) => !(hideBought && (data.checks[`bought:${r.key}`] || r.buy === 0)))
   if (visible.length === 0) return <p className="muted small">Всё куплено.</p>
   return (
-    <ul className="card list">
+    <ul className="card list tinted" style={tint(color)}>
       {visible.map((r) => {
         const key = `bought:${r.key}`
         const done = !!data.checks[key] || r.buy === 0

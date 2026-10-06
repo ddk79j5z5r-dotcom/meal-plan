@@ -1,7 +1,7 @@
-import { formatAmount, formatInt, nutritionOf, productMap } from '../domain/plan'
+import { formatAmount, nutritionOf, productMap } from '../domain/plan'
 import type { Dish, Ingredient, MealItem, Product } from '../domain/types'
 import { useData } from '../store'
-import { Sheet } from './common'
+import { Macros, Sheet } from './common'
 
 /** Display name of a menu item: its dish, or its single product. */
 export function itemName(item: MealItem, dishes: Dish[], products: Map<string, Product>): string {
@@ -50,7 +50,7 @@ export function DishSheet({ dish, ingredients, onClose }: { dish: Dish; ingredie
             })}
           </ul>
           <p className="macros">
-            {formatInt(n.kcal)} ккал · Б {formatInt(n.p)} · Ж {formatInt(n.f)} · У {formatInt(n.c)}
+            <Macros n={n} />
           </p>
         </>
       )}
