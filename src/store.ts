@@ -32,7 +32,7 @@ export const useStore = create<Store>()(
       replace: (data) => set({ data }),
       reset: () => set({ data: createSeed() }),
     }),
-    { name: 'meal-plan', version: 4, partialize: (s) => ({ data: s.data }), migrate: (state) => ({ data: migrate((state as { data: unknown }).data) }) },
+    { name: 'meal-plan', version: 5, partialize: (s) => ({ data: s.data }), migrate: (state) => ({ data: migrate((state as { data: unknown }).data) }) },
   ),
 )
 
@@ -72,6 +72,14 @@ export function migrate(raw: unknown): AppData {
     const freshFoil = fresh.cookware.find((c) => c.id === 'foil')
     if (foil && freshFoil) foil.name = freshFoil.name
     d.version = 4
+  }
+  if (d.version < 5) {
+    // Oatmeal (Р1) joins the cooking plan: oats and nuts portioned on Sunday, soaked the evening before.
+    const r1 = createSeed().dishes.find((x) => x.id === 'r1')!
+    const i = d.dishes.findIndex((x) => x.id === 'r1')
+    if (i >= 0) d.dishes[i] = r1
+    else d.dishes.unshift(r1)
+    d.version = 5
   }
   return d as AppData
 }

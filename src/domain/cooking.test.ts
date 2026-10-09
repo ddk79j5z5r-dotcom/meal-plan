@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createSeed } from '../data/seed'
 import { migrate } from '../store'
 import type { AppData } from './types'
-import { batchTimes, containerCount, containerPlan, cookingPlan, dailyPlan, eveningTransfers, midweekPlan, schedule, thawFor } from './cooking'
+import { batchTimes, containerCount, containerPlan, cookingPlan, dailyPlan, eveningPrep, eveningTransfers, midweekPlan, schedule, thawFor } from './cooking'
 
 const seed = () => createSeed(new Date(2026, 9, 6))
 
@@ -66,10 +66,20 @@ describe('cooking day plan', () => {
 
   it('lists dishes made fresh every day, like oatmeal', () => {
     const daily = dailyPlan(seed())
-    const oatmeal = daily.find((r) => r.dish.code === 'Р1')!
-    expect(oatmeal.portions.he.days).toEqual([1, 4, 7])
-    expect(daily.map((r) => r.dish.code)).toEqual(expect.arrayContaining(['Р1', 'Р9', 'Р12', 'Р16', 'Р20']))
+    expect(daily.map((r) => r.dish.code)).toEqual(expect.arrayContaining(['Р9', 'Р12', 'Р16', 'Р20']))
     expect(daily.some((r) => r.dish.batch)).toBe(false)
+  })
+
+  it('portions oatmeal on the cooking day and reminds to soak it the evening before', () => {
+    const data = seed()
+    const oatmeal = cookingPlan(data).find((r) => r.dish.code === 'Р1')!
+    expect(oatmeal.portions.he.days).toEqual([1, 4, 7])
+    expect(oatmeal.fridge + oatmeal.freezer).toBe(0) // dry jars in the cupboard
+    const placed = schedule(cookingPlan(data)).placed.find((p) => p.row.dish.code === 'Р1')!
+    expect(placed.end).toBe(placed.start) // no heat, only 5 minutes of preparation
+    expect(eveningPrep(data, 2).map((p) => p.dish.code)).toEqual(['Р1']) // evening of day 3 → day 4
+    expect(eveningPrep(data, 6).map((p) => p.dish.code)).toEqual(['Р1']) // evening of day 7 → next day 1
+    expect(eveningPrep(data, 0)).toEqual([])
   })
 
   it('counts containers without eggs kept in their shells', () => {
@@ -127,7 +137,7 @@ describe('migration', () => {
     delete old.prices
     for (const d of old.dishes as { cook?: unknown }[]) delete d.cook
     const data = migrate(old)
-    expect(data.version).toBe(4)
+    expect(data.version).toBe(5)
     expect(data.prices).toEqual({})
     expect(data.dishes.find((d) => d.code === 'Р3')!.cook).toMatchObject({ where: 'airfryer', temp: 180, batchSize: 3 })
   })
@@ -149,7 +159,7 @@ describe('migration to the October 2026 plan', () => {
     old.dishes.push({ id: 'd_mine', name: 'Моё блюдо', ingredients: [], howTo: '', storage: '', batch: false, custom: true })
 
     const data = migrate(old)
-    expect(data.version).toBe(4)
+    expect(data.version).toBe(5)
     expect(data.menu.she[0].map((m) => m.name)).toEqual(['Завтрак', 'Перекус 1', 'Обед', 'Перекус 2', 'Ужин'])
     expect(data.menu.he[0][0].items.at(-1)!.dishId).toBe('r21')
     expect(data.dishes.find((x) => x.id === 'r21')!.name).toBe('Творожные панкейки')
@@ -174,10 +184,23 @@ describe('migration to the air fryer recipes', () => {
     old.prices = { fish: { 0: 500 } }
 
     const data = migrate(old)
-    expect(data.version).toBe(4)
+    expect(data.version).toBe(5)
     expect(data.dishes.find((x) => x.code === 'Р3')).toMatchObject({ name: 'Куриное филе в аэрогриле', cook: { where: 'airfryer' } })
     expect(data.dishes.find((x) => x.id === 'd_mine')!.cook).toMatchObject({ where: 'airfryer', temp: 190, batchSize: 3 })
     expect(data.cookware.find((c) => c.id === 'foil')!.name).toContain('аэрогриля')
     expect(data.prices).toEqual({ fish: { 0: 500 } })
+  })
+})
+
+describe('migration adding oatmeal to the cooking plan', () => {
+  it('turns the built-in oatmeal into a prep-only batch dish', () => {
+    const old = seed() as unknown as Omit<AppData, 'version'> & { version: number }
+    old.version = 4
+    const r1 = old.dishes.find((x) => x.id === 'r1')!
+    r1.batch = false
+    delete r1.cook
+    const data = migrate(old)
+    expect(data.version).toBe(5)
+    expect(data.dishes.find((x) => x.id === 'r1')).toMatchObject({ batch: true, cook: { where: 'none', prepOnly: ['oats', 'nuts'] } })
   })
 })

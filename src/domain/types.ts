@@ -53,8 +53,8 @@ export interface Ingredient {
 
 /** How a batch dish is cooked on the cooking day and how long it keeps. */
 export interface CookSpec {
-  /** The air fryer has one basket and cooks in batches; the stove runs in parallel. */
-  where: 'airfryer' | 'stove'
+  /** The air fryer has one basket and cooks in batches; the stove runs in parallel; 'none' is preparation only. */
+  where: 'airfryer' | 'stove' | 'none'
   /** Air fryer temperature, °C. */
   temp?: number
   /** Time on the stove, or per batch in the air fryer, minutes. */
@@ -77,6 +77,10 @@ export interface CookSpec {
   freshFrom?: number
   /** Reminder for the evening before the cooking day. */
   thaw?: string
+  /** 'none' dishes: products portioned out on the cooking day (the rest is added when eating). */
+  prepOnly?: string[]
+  /** Reminder for the evening before each day the dish is eaten (e.g. soak the oats). */
+  evening?: string
   /** Kept as is, without a food container (eggs in their shells). */
   loose?: boolean
 }
@@ -141,7 +145,7 @@ export interface CookStep {
 }
 
 export interface AppData {
-  version: 4
+  version: 5
   products: Product[]
   dishes: Dish[]
   menu: Menu

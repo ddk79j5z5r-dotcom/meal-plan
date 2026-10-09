@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { addDays, formatLong, planDay, toISO } from '../domain/calendar'
-import { eveningTransfers, midweekPlan, thawFor } from '../domain/cooking'
+import { eveningPrep, eveningTransfers, midweekPlan, thawFor } from '../domain/cooking'
 import { addN, nutritionOf, productMap, ZERO } from '../domain/plan'
 import type { Dish, MealItem, PersonId } from '../domain/types'
 import { useData, useStore } from '../store'
@@ -24,6 +24,7 @@ export function Today({ person, setPerson, go }: { person: PersonId; setPerson: 
   const eatenKey = (i: number) => `eaten:${date}:${person}:${i}`
   const transfers = eveningTransfers(data, pd.menuDay)
   const thaw = thawFor(data, (pd.menuDay + 1) % 7)
+  const soak = eveningPrep(data, pd.menuDay)
   const cookToday = pd.menuDay > 0 ? midweekPlan(data).find((m) => m.day === pd.menuDay) : undefined
 
   const mealN = day.map((m) => nutritionOf(m.items.flatMap((i) => i.ingredients), products))
@@ -70,13 +71,20 @@ export function Today({ person, setPerson, go }: { person: PersonId; setPerson: 
         </div>
       )}
 
-      {pd.offset >= -1 && (transfers.length > 0 || thaw.length > 0) && (
+      {pd.offset >= -1 && (transfers.length > 0 || thaw.length > 0 || soak.length > 0) && (
         <div className="banner night">
-          <b>🌙 Вечером: из морозилки в холодильник на завтра</b>
-          {transfers.length > 0 && <span className="small">{transfers.map((p) => `${p.dish.name} (${people[p.person].name})`).join(', ')}</span>}
+          <b>🌙 Вечером — на завтра</b>
+          {transfers.length > 0 && (
+            <span className="small">❄️→🧊 Из морозилки в холодильник: {transfers.map((p) => `${p.dish.name} (${people[p.person].name})`).join(', ')}</span>
+          )}
+          {soak.map((p) => (
+            <span key={p.dish.id + p.person} className="small">
+              🥣 {p.dish.name} ({people[p.person].name}): {p.dish.cook!.evening}
+            </span>
+          ))}
           {thaw.map((r) => (
             <span key={r.dish.id} className="small">
-              Сырьё для готовки завтра: {r.dish.cook!.thaw}
+              ❄️→🧊 Для готовки завтра: {r.dish.cook!.thaw}
             </span>
           ))}
         </div>

@@ -7,10 +7,11 @@ export const DEFAULT_SPEC: CookSpec = { where: 'stove', minutes: 30, prep: 10, p
 export const specOf = (dish: Dish): CookSpec => dish.cook ?? DEFAULT_SPEC
 
 /** Where a portion eaten on `day` (0 = cooking day) waits until it is eaten. */
-export type Place = 'fridge' | 'freezer' | 'fresh'
+export type Place = 'fridge' | 'freezer' | 'fresh' | 'pantry'
 
 export function placeFor(dish: Dish, day: number): Place {
   const spec = specOf(dish)
+  if (spec.where === 'none') return 'pantry'
   if (day + 1 <= spec.fridgeDays) return 'fridge'
   if (spec.freshFrom != null && day + 1 >= spec.freshFrom) return 'fresh'
   return spec.freezes ? 'freezer' : 'fresh'
@@ -85,7 +86,7 @@ function aggregate(portions: Portion[], dishes: Dish[]): CookRow[] {
     portion.count++
     if (!portion.days.includes(p.day + 1)) portion.days.push(p.day + 1)
     if (p.place === 'freezer') row.freezer++
-    else row.fridge++
+    else if (p.place === 'fridge') row.fridge++
     for (const i of p.ingredients) {
       const t = row.totals.find((x) => x.productId === i.productId)
       if (t) t.amount += i.amount
@@ -126,6 +127,12 @@ export function midweekPlan(data: AppData): MidweekCook[] {
 /** Freezer portions to move to the fridge on the evening of `day`, for the next day. */
 export function eveningTransfers(data: AppData, day: number): Portion[] {
   return batchPortions(data).filter((p) => p.place === 'freezer' && p.day === day + 1)
+}
+
+/** Dishes to prepare on the evening of `day` for the next day's meals (e.g. overnight oats). */
+export function eveningPrep(data: AppData, day: number): Portion[] {
+  const next = (day + 1) % 7
+  return batchPortions(data).filter((p) => p.day === next && p.dish.cook?.evening)
 }
 
 /** Raw frozen ingredients to defrost overnight before cooking on `day` (0 = the cooking day). */
@@ -188,7 +195,7 @@ export function batchTimes(p: Pick<Placed, 'start' | 'batches' | 'spec'>): { sta
 }
 
 const duration = (spec: CookSpec, batches: number) =>
-  spec.where === 'airfryer' ? AIRFRYER_PREHEAT + batches * spec.minutes + (batches - 1) * AIRFRYER_RELOAD : spec.minutes
+  spec.where === 'airfryer' ? AIRFRYER_PREHEAT + batches * spec.minutes + (batches - 1) * AIRFRYER_RELOAD : spec.where === 'none' ? 0 : spec.minutes
 
 /**
  * Greedy list scheduling with three resources: the cook (preparation and attended cooking),
@@ -201,8 +208,8 @@ export function schedule(rows: CookRow[]): Schedule {
     const batches = batchesFor(spec, portionCount(row))
     return { row, spec, batches, length: duration(spec, batches) }
   })
-  const busy: Record<CookSpec['where'], { s: number; e: number }[]> = { stove: [], airfryer: [] }
-  const capacity: Record<CookSpec['where'], number> = { stove: BURNERS, airfryer: 1 }
+  const busy: Record<CookSpec['where'], { s: number; e: number }[]> = { stove: [], airfryer: [], none: [] }
+  const capacity: Record<CookSpec['where'], number> = { stove: BURNERS, airfryer: 1, none: Infinity }
   const placed: Placed[] = []
   let cookFree = 0
 

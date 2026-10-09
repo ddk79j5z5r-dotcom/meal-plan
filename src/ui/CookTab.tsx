@@ -8,6 +8,7 @@ import {
   COOL_MINUTES,
   cookingPlan,
   dailyPlan,
+  eveningPrep,
   eveningTransfers,
   formatClock,
   formatDuration,
@@ -34,6 +35,7 @@ const PLACE: Record<Place, { icon: string; label: string }> = {
   fridge: { icon: '🧊', label: 'холодильник' },
   freezer: { icon: '❄️', label: 'морозилка' },
   fresh: { icon: '🍳', label: 'готовить в середине недели' },
+  pantry: { icon: '🫙', label: 'банка в шкафу, залить с вечера' },
 }
 
 const weekday = new Intl.DateTimeFormat('ru-RU', { weekday: 'short' })
@@ -130,7 +132,9 @@ export function CookTab() {
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
 
 function formatTotals(row: CookRow, products: ProductMap) {
+  const only = row.dish.cook?.where === 'none' ? row.dish.cook.prepOnly : undefined
   return row.totals
+    .filter((t) => !only || only.includes(t.productId))
     .map((t) => ({ t, p: products.get(t.productId) }))
     .filter(({ p }) => p && p.category !== 'Масла и специи')
     .map(({ t, p }) => `${shortName(p!)} ${formatBulk(p!, t.amount)}`)
@@ -170,6 +174,27 @@ function Timeline({
     const { dish } = p.row
     const s = p.spec
     const fryer = s.where === 'airfryer'
+    if (s.where === 'none') {
+      events.push({
+        at: p.start - s.prep,
+        order: 1,
+        key: key(dish.id),
+        color: dishColor(dish),
+        body: (
+          <button className="timeline-body tappable" onClick={() => onOpen(dish)}>
+            <span className="item-name">
+              🥣 {dish.code && <span className="code">{dish.code}</span>} {dish.name}
+            </span>
+            <span className="small">
+              {formatTotals(p.row, products)} — на {portionCount(p.row)} {portionCount(p.row) === 1 ? 'завтрак' : 'завтрака'}
+            </span>
+            {s.prepText && <span className="muted small">{capitalize(s.prepText)}.</span>}
+            {s.evening && <span className="small timeline-heat">Вечером накануне: {s.evening}.</span>}
+          </button>
+        ),
+      })
+      continue
+    }
     events.push({
       at: p.start - s.prep,
       order: 1,
@@ -311,7 +336,9 @@ function WhatToCook({
           <span className="muted small">
             {specOf(r.dish).where === 'airfryer'
               ? `💨 ${specOf(r.dish).temp} °C · ${batchesFor(specOf(r.dish), portionCount(r))} × ${specOf(r.dish).minutes} мин`
-              : `🔥 плита · ${specOf(r.dish).minutes} мин`}
+              : specOf(r.dish).where === 'none'
+                ? '🥣 без готовки · 🫙 по банкам, залить с вечера'
+                : `🔥 плита · ${specOf(r.dish).minutes} мин`}
             {r.fridge > 0 && ` · 🧊 ${r.fridge}`}
             {r.freezer > 0 && ` · ❄️ ${r.freezer}`}
           </span>
@@ -378,12 +405,18 @@ function Containers({ products, dayLabel }: { products: ProductMap; dayLabel: (d
         const transfers = day > 0 ? eveningTransfers(data, day - 1) : []
         const cookToday = midweek.find((m) => m.day === day)
         const thawToday = day > 0 ? thawFor(data, day) : []
+        const soak = eveningPrep(data, (day + 6) % 7)
         return (
           <section key={day} className="card day-card">
             <h3>{dayLabel(day)}</h3>
             {transfers.length > 0 && (
               <p className="small note">
                 ❄️→🧊 Вечером дня {day} достать из морозилки: {transfers.map((p) => `${p.dish.name.toLowerCase()} (${people[p.person].name})`).join(', ')}
+              </p>
+            )}
+            {soak.length > 0 && (
+              <p className="small note">
+                🥣 Вечером накануне: {soak.map((p) => `${p.dish.name.toLowerCase()} (${people[p.person].name})`).join(', ')} — {soak[0].dish.cook!.evening}
               </p>
             )}
             {cookToday && (

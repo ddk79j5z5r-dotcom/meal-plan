@@ -51,6 +51,7 @@ const ing = (productId: string, amount: number): Ingredient => ({ productId, amo
 
 // Times and temperatures from the recipe texts; fridge days from their «Хранение» notes and the «План готовки» sheet.
 export const COOK_SPECS: Record<string, CookSpec> = {
+  Р1: { where: 'none', minutes: 0, prep: 5, prepText: 'отмерить в банки на каждый завтрак хлопья и орехи — без готовки', prepOnly: ['oats', 'nuts'], evening: 'залить хлопья в банке молоком (250 мл) и убрать в холодильник — утром добавить банан и мёд; или утром сварить 5 минут', fridgeDays: 7, freezes: false, loose: true },
   Р2: { where: 'stove', minutes: 15, prep: 2, prepText: 'залить яйца холодной водой', fridgeDays: 7, freezes: false, loose: true },
   Р3: { where: 'airfryer', temp: 180, minutes: 15, batchSize: 3, prep: 10, prepText: 'обсушить филе, толстые куски разрезать вдоль на пласты ~2 см, смешать со специями и маслом', heatNote: 'в один слой, перевернуть на 8-й минуте; готово при 74 °C внутри', fridgeDays: 3, freezes: true },
   Р4: { where: 'airfryer', temp: 180, minutes: 20, batchSize: 4, prep: 5, prepText: 'обсушить бедро, подрезать толстые места, натереть специями и маслом', heatNote: 'перевернуть на 10-й минуте, последние 2 мин — 200 °C для корочки', fridgeDays: 3, freezes: true },
@@ -86,7 +87,7 @@ function dish(code: string, ingredients: Ingredient[], batch: boolean): Dish {
 
 // Per-portion amounts are calibrated so the weekly totals match the original «Закупка нед.1» sheet.
 export const DISHES: Dish[] = [
-  dish('Р1', [ing('oats', 80), ing('milk', 250), ing('banana', 120), ing('nuts', 20), ing('honey', 10)], false),
+  dish('Р1', [ing('oats', 80), ing('milk', 250), ing('banana', 120), ing('nuts', 20), ing('honey', 10)], true),
   dish('Р2', [ing('eggs', 2)], true),
   dish('Р3', [ing('chicken_fillet', 200), ing('oil_sun', 3)], true),
   dish('Р4', [ing('chicken_thigh', 200), ing('oil_sun', 3)], true),
@@ -165,7 +166,7 @@ function buildMenu() {
 
 export function createSeed(today = new Date()): AppData {
   return {
-    version: 4,
+    version: 5,
     products: structuredClone(PRODUCTS),
     dishes: structuredClone(DISHES),
     menu: buildMenu(),

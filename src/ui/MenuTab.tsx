@@ -593,6 +593,7 @@ function CookSpecEditor({ spec, onChange }: { spec: CookSpec; onChange: (fn: (s:
           >
             <option value="stove">На плите</option>
             <option value="airfryer">В аэрогриле</option>
+            <option value="none">Без готовки (только подготовить)</option>
           </select>
         </Field>
         {spec.where === 'airfryer' && (
@@ -608,9 +609,11 @@ function CookSpecEditor({ spec, onChange }: { spec: CookSpec; onChange: (fn: (s:
         <Field label="Подготовка, мин">
           <NumInput value={spec.prep} onChange={(v) => onChange((s) => (s.prep = v))} />
         </Field>
-        <Field label={spec.where === 'airfryer' ? 'Одна партия, мин' : 'На огне, мин'}>
-          <NumInput value={spec.minutes} onChange={(v) => onChange((s) => (s.minutes = v))} />
-        </Field>
+        {spec.where !== 'none' && (
+          <Field label={spec.where === 'airfryer' ? 'Одна партия, мин' : 'На огне, мин'}>
+            <NumInput value={spec.minutes} onChange={(v) => onChange((s) => (s.minutes = v))} />
+          </Field>
+        )}
         <Field label="В холодильнике до дня">
           <NumInput value={spec.fridgeDays} min={1} onChange={(v) => onChange((s) => (s.fridgeDays = Math.min(7, Math.max(1, Math.round(v)))))} />
         </Field>
