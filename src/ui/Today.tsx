@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { addDays, formatLong, planDay, toISO } from '../domain/calendar'
-import { eveningTransfers, midweekPlan } from '../domain/cooking'
+import { eveningTransfers, midweekPlan, thawFor } from '../domain/cooking'
 import { addN, nutritionOf, productMap, ZERO } from '../domain/plan'
 import type { Dish, MealItem, PersonId } from '../domain/types'
 import { useData, useStore } from '../store'
@@ -23,6 +23,7 @@ export function Today({ person, setPerson, go }: { person: PersonId; setPerson: 
   const day = data.menu[person][pd.menuDay] ?? []
   const eatenKey = (i: number) => `eaten:${date}:${person}:${i}`
   const transfers = eveningTransfers(data, pd.menuDay)
+  const thaw = thawFor(data, (pd.menuDay + 1) % 7)
   const cookToday = pd.menuDay > 0 ? midweekPlan(data).find((m) => m.day === pd.menuDay) : undefined
 
   const mealN = day.map((m) => nutritionOf(m.items.flatMap((i) => i.ingredients), products))
@@ -69,10 +70,15 @@ export function Today({ person, setPerson, go }: { person: PersonId; setPerson: 
         </div>
       )}
 
-      {pd.offset >= 0 && transfers.length > 0 && (
+      {pd.offset >= -1 && (transfers.length > 0 || thaw.length > 0) && (
         <div className="banner night">
           <b>🌙 Вечером: из морозилки в холодильник на завтра</b>
-          <span className="small">{transfers.map((p) => `${p.dish.name} (${people[p.person].name})`).join(', ')}</span>
+          {transfers.length > 0 && <span className="small">{transfers.map((p) => `${p.dish.name} (${people[p.person].name})`).join(', ')}</span>}
+          {thaw.map((r) => (
+            <span key={r.dish.id} className="small">
+              Сырьё для готовки завтра: {r.dish.cook!.thaw}
+            </span>
+          ))}
         </div>
       )}
       {pd.offset >= 0 && cookToday && (

@@ -584,23 +584,31 @@ function CookSpecEditor({ spec, onChange }: { spec: CookSpec; onChange: (fn: (s:
             onChange={(e) =>
               onChange((s) => {
                 s.where = e.target.value as CookSpec['where']
-                if (s.where === 'oven' && !s.temp) s.temp = 200
+                if (s.where === 'airfryer') {
+                  s.temp ??= 180
+                  s.batchSize ??= 3
+                }
               })
             }
           >
             <option value="stove">На плите</option>
-            <option value="oven">В духовке</option>
+            <option value="airfryer">В аэрогриле</option>
           </select>
         </Field>
-        {spec.where === 'oven' && (
-          <Field label="Температура, °C">
-            <NumInput value={spec.temp} onChange={(v) => onChange((s) => (s.temp = v))} />
-          </Field>
+        {spec.where === 'airfryer' && (
+          <>
+            <Field label="Температура, °C">
+              <NumInput value={spec.temp} onChange={(v) => onChange((s) => (s.temp = v))} />
+            </Field>
+            <Field label="Порций за партию">
+              <NumInput value={spec.batchSize} min={1} onChange={(v) => onChange((s) => (s.batchSize = Math.max(1, Math.round(v))))} />
+            </Field>
+          </>
         )}
         <Field label="Подготовка, мин">
           <NumInput value={spec.prep} onChange={(v) => onChange((s) => (s.prep = v))} />
         </Field>
-        <Field label={spec.where === 'oven' ? 'В духовке, мин' : 'На огне, мин'}>
+        <Field label={spec.where === 'airfryer' ? 'Одна партия, мин' : 'На огне, мин'}>
           <NumInput value={spec.minutes} onChange={(v) => onChange((s) => (s.minutes = v))} />
         </Field>
         <Field label="В холодильнике до дня">
@@ -617,6 +625,9 @@ function CookSpecEditor({ spec, onChange }: { spec: CookSpec; onChange: (fn: (s:
           Нужно стоять у плиты всё время
         </label>
       )}
+      <Field label="Во время готовки (перевернуть, встряхнуть…)">
+        <input value={spec.heatNote ?? ''} onChange={(e) => onChange((s) => (s.heatNote = e.target.value || undefined))} />
+      </Field>
       <Field label="Что сделать при подготовке">
         <textarea rows={2} value={spec.prepText} onChange={(e) => onChange((s) => (s.prepText = e.target.value))} />
       </Field>

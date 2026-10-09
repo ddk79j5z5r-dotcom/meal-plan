@@ -12,11 +12,20 @@ export type Place = 'fridge' | 'freezer' | 'fresh'
 export function placeFor(dish: Dish, day: number): Place {
   const spec = specOf(dish)
   if (day + 1 <= spec.fridgeDays) return 'fridge'
+  if (spec.freshFrom != null && day + 1 >= spec.freshFrom) return 'fresh'
   return spec.freezes ? 'freezer' : 'fresh'
 }
 
-/** Menu day (0-based) on which a non-freezable dish is cooked again for the rest of the week. */
-export const freshDay = (dish: Dish) => specOf(dish).fridgeDays
+/** Menu day (0-based) on which a dish is cooked again, fresh, for the rest of the week. */
+export const freshDay = (dish: Dish) => {
+  const spec = specOf(dish)
+  return spec.freshFrom != null ? spec.freshFrom - 1 : spec.fridgeDays
+}
+
+/** Air fryer batches needed for `portions`. */
+export const batchesFor = (spec: CookSpec, portions: number) => (spec.where === 'airfryer' ? Math.max(1, Math.ceil(portions / (spec.batchSize || 1))) : 1)
+
+export const portionCount = (row: CookRow) => row.portions.he.count + row.portions.she.count
 
 // ---------- Portions of batch dishes in the 7-day menu ----------
 
@@ -107,6 +116,12 @@ export function eveningTransfers(data: AppData, day: number): Portion[] {
   return batchPortions(data).filter((p) => p.place === 'freezer' && p.day === day + 1)
 }
 
+/** Raw frozen ingredients to defrost overnight before cooking on `day` (0 = the cooking day). */
+export function thawFor(data: AppData, day: number): CookRow[] {
+  const rows = day === 0 ? cookingPlan(data) : (midweekPlan(data).find((m) => m.day === day)?.rows ?? [])
+  return rows.filter((r) => r.dish.cook?.thaw)
+}
+
 /** Containers: one per person and meal that has at least one batch dish, grouped by day. */
 export function containerPlan(data: AppData): { day: number; boxes: { person: PersonId; meal: string; portions: Portion[] }[] }[] {
   const portions = batchPortions(data)
@@ -130,19 +145,15 @@ export const containerCount = (data: AppData) =>
 export interface Placed {
   row: CookRow
   spec: CookSpec
-  /** Minute it goes on the heat; preparation runs in the minutes before. */
+  /** Minute it goes on the heat (air fryer: starts preheating); preparation runs in the minutes before. */
   start: number
   end: number
-  /** Oven temperature to switch to when this dish goes in, if it differs from the current one. */
-  setTemp?: number
-  /** Temperature the oven is actually at while this dish is in (may differ from the recipe by a little). */
-  ovenTemp?: number
+  /** Air fryer batches, each `spec.minutes` long. */
+  batches: number
 }
 
 export interface Schedule {
   placed: Placed[]
-  /** When to switch the oven on, and to what. */
-  preheat?: { at: number; temp: number }
   /** Everything is off the heat. */
   cookedAt: number
   /** Cooled and packed: the session is over. */
@@ -151,74 +162,59 @@ export interface Schedule {
 
 export const COOL_MINUTES = 20
 export const PACK_MINUTES = 15
-const PREHEAT = 10
+/** Air fryer preheat before each dish, and the time to unload and reload between batches. */
+export const AIRFRYER_PREHEAT = 3
+export const AIRFRYER_RELOAD = 2
 const BURNERS = 4
-const OVEN_SLOTS = 2
-/** Dishes can share the oven when their temperatures differ by no more than this. */
-const OVEN_TOLERANCE = 20
 
-interface Interval {
-  s: number
-  e: number
-  temp?: number
+/** When each batch of an air fryer dish starts and ends. */
+export function batchTimes(p: Pick<Placed, 'start' | 'batches' | 'spec'>): { start: number; end: number }[] {
+  return Array.from({ length: p.batches }, (_, i) => {
+    const start = p.start + AIRFRYER_PREHEAT + i * (p.spec.minutes + AIRFRYER_RELOAD)
+    return { start, end: start + p.spec.minutes }
+  })
 }
+
+const duration = (spec: CookSpec, batches: number) =>
+  spec.where === 'airfryer' ? AIRFRYER_PREHEAT + batches * spec.minutes + (batches - 1) * AIRFRYER_RELOAD : spec.minutes
 
 /**
  * Greedy list scheduling with three resources: the cook (preparation and attended cooking),
- * stove burners and oven slots (dishes in the oven at once must have close temperatures).
+ * four stove burners and the air fryer (one basket, one dish at a time, in batches).
  * At each step the dish that would finish last if delayed goes first (earliest start − duration).
  */
 export function schedule(rows: CookRow[]): Schedule {
-  const tasks = rows.map((row) => ({ row, spec: specOf(row.dish) }))
-  const stove: Interval[] = []
-  const oven: Interval[] = []
+  const tasks = rows.map((row) => {
+    const spec = specOf(row.dish)
+    const batches = batchesFor(spec, portionCount(row))
+    return { row, spec, batches, length: duration(spec, batches) }
+  })
+  const busy: Record<CookSpec['where'], { s: number; e: number }[]> = { stove: [], airfryer: [] }
+  const capacity: Record<CookSpec['where'], number> = { stove: BURNERS, airfryer: 1 }
   const placed: Placed[] = []
   let cookFree = 0
 
-  const fits = (spec: CookSpec, s: number) => {
-    const e = s + spec.minutes
-    const overlapping = (spec.where === 'oven' ? oven : stove).filter((x) => x.s < e && s < x.e)
-    if (spec.where === 'stove') return overlapping.length < BURNERS
-    return overlapping.length < OVEN_SLOTS && overlapping.every((x) => Math.abs((x.temp ?? 0) - (spec.temp ?? 0)) <= OVEN_TOLERANCE)
-  }
+  const fits = (where: CookSpec['where'], s: number, length: number) => busy[where].filter((x) => x.s < s + length && s < x.e).length < capacity[where]
 
-  const earliest = (spec: CookSpec) => {
-    const base = Math.max(cookFree + spec.prep, spec.where === 'oven' ? PREHEAT : 0)
-    const candidates = [base, ...[...stove, ...oven].map((x) => x.e).filter((e) => e > base)].sort((a, b) => a - b)
-    return candidates.find((s) => fits(spec, s)) ?? Math.max(base, ...[...stove, ...oven].map((x) => x.e))
+  const earliest = (t: (typeof tasks)[number]) => {
+    const base = cookFree + t.spec.prep
+    const candidates = [base, ...busy[t.spec.where].map((x) => x.e).filter((e) => e > base)].sort((a, b) => a - b)
+    return candidates.find((s) => fits(t.spec.where, s, t.length)) ?? Math.max(base, ...busy[t.spec.where].map((x) => x.e))
   }
 
   while (tasks.length > 0) {
-    // Long dishes first: the task whose earliest start minus its duration is smallest.
-    const options = tasks.map((t) => ({ t, s: earliest(t.spec) }))
-    const pick = options.sort((a, b) => a.s - a.t.spec.minutes - (b.s - b.t.spec.minutes) || b.t.spec.minutes - a.t.spec.minutes)[0]
-    const { spec } = pick.t
-    const interval = { s: pick.s, e: pick.s + spec.minutes, temp: spec.temp }
-    ;(spec.where === 'oven' ? oven : stove).push(interval)
-    placed.push({ row: pick.t.row, spec, start: interval.s, end: interval.e })
-    cookFree = spec.attended ? interval.e : interval.s
-    tasks.splice(tasks.indexOf(pick.t), 1)
+    const options = tasks.map((t) => ({ t, s: earliest(t) }))
+    const pick = options.sort((a, b) => a.s - a.t.length - (b.s - b.t.length) || b.t.length - a.t.length)[0]
+    const { t, s } = pick
+    busy[t.spec.where].push({ s, e: s + t.length })
+    placed.push({ row: t.row, spec: t.spec, start: s, end: s + t.length, batches: t.batches })
+    cookFree = t.spec.attended ? s + t.length : s
+    tasks.splice(tasks.indexOf(t), 1)
   }
 
   placed.sort((a, b) => a.start - a.spec.prep - (b.start - b.spec.prep) || a.start - b.start)
-
-  // Oven temperature changes, in the order dishes go in.
-  let preheat: Schedule['preheat']
-  let current: number | undefined
-  for (const p of [...placed].filter((x) => x.spec.where === 'oven').sort((a, b) => a.start - b.start)) {
-    const temp = p.spec.temp ?? 180
-    if (current == null) {
-      preheat = { at: Math.max(0, p.start - PREHEAT), temp }
-      current = temp
-    } else if (Math.abs(temp - current) > OVEN_TOLERANCE) {
-      p.setTemp = temp
-      current = temp
-    }
-    p.ovenTemp = current
-  }
-
   const cookedAt = Math.max(0, ...placed.map((p) => p.end))
-  return { placed, preheat, cookedAt, total: cookedAt + COOL_MINUTES + PACK_MINUTES }
+  return { placed, cookedAt, total: cookedAt + COOL_MINUTES + PACK_MINUTES }
 }
 
 export const formatClock = (minutes: number) => `${Math.floor(minutes / 60)}:${String(Math.round(minutes % 60)).padStart(2, '0')}`

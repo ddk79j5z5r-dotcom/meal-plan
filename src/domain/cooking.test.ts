@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createSeed } from '../data/seed'
 import { migrate } from '../store'
 import type { AppData } from './types'
-import { containerCount, containerPlan, cookingPlan, eveningTransfers, midweekPlan, schedule } from './cooking'
+import { batchTimes, containerCount, containerPlan, cookingPlan, eveningTransfers, midweekPlan, schedule, thawFor } from './cooking'
 
 const seed = () => createSeed(new Date(2026, 9, 6))
 
@@ -29,7 +29,7 @@ describe('cooking day plan', () => {
     expect(fillet.freezer).toBe(5)
     const fish = cookingPlan(seed()).find((r) => r.dish.code === 'Р8')!
     expect(fish.fridge).toBe(1) // day 1 only, fish keeps 2 days
-    expect(fish.freezer).toBe(3)
+    expect(fish.freezer).toBe(1) // day 3; days 5 and 7 are cooked fresh mid-week
     expect(cookingPlan(seed()).some((r) => r.dish.code === 'Р20')).toBe(false) // the sandwich is assembled daily
   })
 
@@ -44,9 +44,17 @@ describe('cooking day plan', () => {
     expect(mid.map((m) => m.day)).toEqual([3, 4])
     const veg = mid[0].rows.find((r) => r.dish.code === 'Р11')!
     expect(veg.portions.she.days).toEqual([5, 6, 7])
+    expect(mid[1].rows.find((r) => r.dish.code === 'Р8')!.portions.she.days).toEqual([5, 7])
     const freshPotato = mid[1].rows.find((r) => r.dish.code === 'Р14')!
     expect(freshPotato.portions.he.days).toEqual([5, 6, 7])
     expect(freshPotato.portions.she.days).toEqual([5, 7])
+  })
+
+  it('reminds to defrost raw fish the evening before cooking it', () => {
+    const data = seed()
+    expect(thawFor(data, 0).map((r) => r.dish.code)).toEqual(['Р8'])
+    expect(thawFor(data, 4).map((r) => r.dish.code)).toEqual(['Р8'])
+    expect(thawFor(data, 3)).toEqual([])
   })
 
   it('reminds to move freezer portions to the fridge the evening before', () => {
@@ -72,29 +80,35 @@ describe('cooking day plan', () => {
 describe('timeline', () => {
   const s = schedule(cookingPlan(seed()))
 
-  it('places every dish once without overloading the stove or oven', () => {
+  it('places every dish once, at most 4 on the stove and 1 in the air fryer at a time', () => {
     expect(s.placed).toHaveLength(cookingPlan(seed()).length)
-    for (const where of ['stove', 'oven'] as const) {
+    for (const [where, cap] of [['stove', 4], ['airfryer', 1]] as const) {
       const xs = s.placed.filter((p) => p.spec.where === where)
       for (const p of xs) {
         // dishes on the heat at the moment this one starts
         const busy = xs.filter((q) => q.start <= p.start && p.start < q.end).length
-        expect(busy).toBeLessThanOrEqual(where === 'stove' ? 4 : 2)
+        expect(busy).toBeLessThanOrEqual(cap)
       }
     }
   })
 
-  it('never puts dishes with very different temperatures in the oven together', () => {
-    const oven = s.placed.filter((p) => p.spec.where === 'oven')
-    for (const a of oven)
-      for (const b of oven)
-        if (a !== b && a.start < b.end && b.start < a.end) expect(Math.abs(a.spec.temp! - b.spec.temp!)).toBeLessThanOrEqual(20)
+  it('splits air fryer dishes into batches like the sheet', () => {
+    const batches = (code: string) => s.placed.find((p) => p.row.dish.code === code)!.batches
+    expect(batches('Р3')).toBe(3) // 9 portions, 3 per batch
+    expect(batches('Р4')).toBe(1)
+    expect(batches('Р7')).toBe(1)
+    expect(batches('Р8')).toBe(1) // only days 1 and 3 on Sunday; days 5–7 are cooked fresh
+    const fillet = s.placed.find((p) => p.row.dish.code === 'Р3')!
+    const times = batchTimes(fillet)
+    expect(times).toHaveLength(3)
+    expect(times[0].start).toBe(fillet.start + 3)
+    expect(times[2].end).toBe(fillet.end)
   })
 
-  it('preheats the oven and fits in about three hours, like the sheet', () => {
-    expect(s.preheat).toBeDefined()
-    expect(s.total).toBeGreaterThan(120)
-    expect(s.total).toBeLessThanOrEqual(200)
+  it('starts with the long beef in the air fryer and takes about four hours, like the sheet', () => {
+    expect(s.placed[0].row.dish.code).toBe('Р7')
+    expect(s.total).toBeGreaterThan(210)
+    expect(s.total).toBeLessThanOrEqual(270)
   })
 })
 
@@ -105,9 +119,9 @@ describe('migration', () => {
     delete old.prices
     for (const d of old.dishes as { cook?: unknown }[]) delete d.cook
     const data = migrate(old)
-    expect(data.version).toBe(3)
+    expect(data.version).toBe(4)
     expect(data.prices).toEqual({})
-    expect(data.dishes.find((d) => d.code === 'Р3')!.cook).toMatchObject({ where: 'oven', temp: 200 })
+    expect(data.dishes.find((d) => d.code === 'Р3')!.cook).toMatchObject({ where: 'airfryer', temp: 180, batchSize: 3 })
   })
 })
 
@@ -127,7 +141,7 @@ describe('migration to the October 2026 plan', () => {
     old.dishes.push({ id: 'd_mine', name: 'Моё блюдо', ingredients: [], howTo: '', storage: '', batch: false, custom: true })
 
     const data = migrate(old)
-    expect(data.version).toBe(3)
+    expect(data.version).toBe(4)
     expect(data.menu.she[0].map((m) => m.name)).toEqual(['Завтрак', 'Перекус 1', 'Обед', 'Перекус 2', 'Ужин'])
     expect(data.menu.he[0][0].items.at(-1)!.dishId).toBe('r21')
     expect(data.dishes.find((x) => x.id === 'r21')!.name).toBe('Творожные панкейки')
@@ -137,5 +151,25 @@ describe('migration to the October 2026 plan', () => {
     expect(data.prices).toEqual({ eggs: { 1: 15 } })
     expect(data.products.find((p) => p.id === 'milk')!.price).toBe(99)
     expect(data.products.some((p) => p.id === 'chocopie')).toBe(true)
+  })
+})
+
+describe('migration to the air fryer recipes', () => {
+  it('replaces built-in recipes, converts custom oven dishes and keeps the rest', () => {
+    const old = seed() as unknown as Omit<AppData, 'version'> & { version: number }
+    old.version = 3
+    const r3 = old.dishes.find((x) => x.code === 'Р3')!
+    r3.name = 'Куриное филе запечённое'
+    r3.cook = { where: 'oven' as never, temp: 200, minutes: 25, prep: 10, prepText: '', fridgeDays: 3, freezes: true }
+    old.dishes.push({ id: 'd_mine', name: 'Моё', ingredients: [], howTo: '', storage: '', batch: true, custom: true, cook: { where: 'oven' as never, temp: 190, minutes: 20, prep: 5, prepText: '', fridgeDays: 3, freezes: true } })
+    old.cookware.find((c) => c.id === 'foil')!.name = 'Фольга / пергамент для запекания'
+    old.prices = { fish: { 0: 500 } }
+
+    const data = migrate(old)
+    expect(data.version).toBe(4)
+    expect(data.dishes.find((x) => x.code === 'Р3')).toMatchObject({ name: 'Куриное филе в аэрогриле', cook: { where: 'airfryer' } })
+    expect(data.dishes.find((x) => x.id === 'd_mine')!.cook).toMatchObject({ where: 'airfryer', temp: 190, batchSize: 3 })
+    expect(data.cookware.find((c) => c.id === 'foil')!.name).toContain('аэрогриля')
+    expect(data.prices).toEqual({ fish: { 0: 500 } })
   })
 })

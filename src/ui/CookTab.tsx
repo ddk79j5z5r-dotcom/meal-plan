@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import { addDays, formatShort, parseISO, weekStart } from '../domain/calendar'
 import {
+  batchesFor,
+  batchTimes,
   containerCount,
   containerPlan,
   COOL_MINUTES,
@@ -9,8 +11,10 @@ import {
   formatClock,
   formatDuration,
   midweekPlan,
+  portionCount,
   schedule,
   specOf,
+  thawFor,
   type CookRow,
   type Place,
   type Portion,
@@ -44,7 +48,8 @@ export function CookTab() {
   const boxes = containerCount(data)
   const fridge = plan.reduce((n, r) => n + r.fridge, 0)
   const freezer = plan.reduce((n, r) => n + r.freezer, 0)
-  const thaw = plan.filter((r) => r.dish.cook?.thaw)
+  const thaw = thawFor(data, 0)
+  const airfryerMinutes = sched.placed.filter((p) => p.spec.where === 'airfryer').reduce((n, p) => n + p.end - p.start, 0)
   const start = weekStart(data.settings.startDate, week)
   const dayLabel = (day: number) => {
     const iso = addDays(start, day)
@@ -65,7 +70,7 @@ export function CookTab() {
         <div>
           <b>≈ {formatDuration(sched.total)}</b>
           <span className="muted small">
-            {plan.length} блюд · {boxes} контейнеров на неделю · 🧊 {fridge} порц. · ❄️ {freezer} порц.
+            {plan.length} блюд · аэрогриль {formatDuration(airfryerMinutes)} · {boxes} контейнеров · 🧊 {fridge} порц. · ❄️ {freezer} порц.
           </span>
         </div>
       </section>
@@ -160,25 +165,10 @@ function Timeline({
   const key = (k: string) => `cook:w${week}:${k}`
   const events: Event[] = []
 
-  if (sched.preheat) {
-    events.push({
-      at: sched.preheat.at,
-      order: 0,
-      key: key('preheat'),
-      color: 'var(--cook)',
-      body: (
-        <>
-          <span className="item-name">♨️ Включить духовку на {sched.preheat.temp} °C</span>
-          <span className="muted small">Пока греется — подготовьте противни, пергамент и фольгу.</span>
-        </>
-      ),
-    })
-  }
-
   for (const p of sched.placed) {
     const { dish } = p.row
     const s = p.spec
-    const oven = s.where === 'oven'
+    const fryer = s.where === 'airfryer'
     events.push({
       at: p.start - s.prep,
       order: 1,
@@ -187,36 +177,53 @@ function Timeline({
       body: (
         <button className="timeline-body tappable" onClick={() => onOpen(dish)}>
           <span className="item-name">
-            {oven ? '♨️' : '🔥'} {dish.code && <span className="code">{dish.code}</span>} {dish.name}
+            {fryer ? '💨' : '🔥'} {dish.code && <span className="code">{dish.code}</span>} {dish.name}
           </span>
           <span className="small">{formatTotals(p.row, products)}</span>
           {s.prepText && <span className="muted small">{capitalize(s.prepText)}.</span>}
           <span className="small timeline-heat">
-            {p.setTemp != null && <b>Переключить духовку на {p.setTemp} °C. </b>}
-            {oven ? (
+            {fryer ? (
               <>
-                В духовку ({p.ovenTemp ?? s.temp} °C{p.ovenTemp != null && s.temp != null && p.ovenTemp !== s.temp ? `, по рецепту ${s.temp} °C — проверьте готовность` : ''}) в {formatClock(p.start)} на {s.minutes} мин
+                В {formatClock(p.start)} прогреть аэрогриль 3 мин до {s.temp} °C, затем{' '}
+                {p.batches > 1 ? `${p.batches} партии по ${s.minutes} мин` : `${s.minutes} мин`}
+                {p.batches > 1 && ` (по ${s.batchSize} порц.)`}
               </>
             ) : (
               <>
                 На плиту в {formatClock(p.start)} на {s.minutes} мин{s.attended ? ', стоять рядом и помешивать' : ''}
               </>
             )}
+            {s.heatNote && <span className="muted"> · {s.heatNote}</span>}
           </span>
         </button>
       ),
     })
-    events.push({
-      at: p.end,
-      order: -1,
-      body: (
-        <span className="muted small timeline-done">
-          ⏰ {oven ? 'Достать' : 'Снять с огня'}: {dish.name}
-          {dish.code === 'Р13' ? ' — дать постоять 10 мин под крышкой' : ''}
-          {dish.code === 'Р2' ? ' — переложить в холодную воду' : ''}
-        </span>
-      ),
-    })
+    if (fryer) {
+      batchTimes(p).forEach((b, i) => {
+        const last = i === p.batches - 1
+        events.push({
+          at: b.end,
+          order: -1,
+          body: (
+            <span className="muted small timeline-done">
+              ⏰ {p.batches > 1 ? `Партия ${i + 1}/${p.batches} готова` : 'Готово'} — {last ? 'выложить' : 'выложить и заложить следующую'}: {dish.name}
+            </span>
+          ),
+        })
+      })
+    } else {
+      events.push({
+        at: p.end,
+        order: -1,
+        body: (
+          <span className="muted small timeline-done">
+            ⏰ Снять с огня: {dish.name}
+            {dish.code === 'Р13' || dish.code === 'Р18' ? ' — дать постоять 10 мин под крышкой' : ''}
+            {dish.code === 'Р2' ? ' — переложить в холодную воду' : ''}
+          </span>
+        ),
+      })
+    }
   }
 
   events.push(
@@ -252,7 +259,7 @@ function Timeline({
   return (
     <>
       <p className="muted small">
-        Сделано {done} из {keyed.length}. Время — от начала готовки. Духовка вмещает 2 противня, на плите 4 конфорки; пока что-то варится, готовьте следующее.
+        Сделано {done} из {keyed.length}. Время — от начала готовки. Аэрогриль — одна корзина: блюда идут друг за другом партиями, в один слой. Плита (4 конфорки) работает параллельно.
       </p>
       <ol className="timeline card">
         {events.map((e, i) => (
@@ -299,7 +306,9 @@ function WhatToCook({
           </span>
         ))}
         <span className="muted small">
-          {specOf(r.dish).where === 'oven' ? `♨️ ${specOf(r.dish).temp} °C` : '🔥 плита'} · {specOf(r.dish).minutes} мин
+          {specOf(r.dish).where === 'airfryer'
+            ? `💨 ${specOf(r.dish).temp} °C · ${batchesFor(specOf(r.dish), portionCount(r))} × ${specOf(r.dish).minutes} мин`
+            : `🔥 плита · ${specOf(r.dish).minutes} мин`}
           {r.fridge > 0 && ` · 🧊 ${r.fridge}`}
           {r.freezer > 0 && ` · ❄️ ${r.freezer}`}
         </span>
@@ -355,6 +364,7 @@ function Containers({ products, dayLabel }: { products: ProductMap; dayLabel: (d
       {days.map(({ day, boxes }) => {
         const transfers = day > 0 ? eveningTransfers(data, day - 1) : []
         const cookToday = midweek.find((m) => m.day === day)
+        const thawToday = day > 0 ? thawFor(data, day) : []
         return (
           <section key={day} className="card day-card">
             <h3>{dayLabel(day)}</h3>
@@ -366,6 +376,7 @@ function Containers({ products, dayLabel }: { products: ProductMap; dayLabel: (d
             {cookToday && (
               <p className="small note">
                 🍳 Сегодня приготовить: {cookToday.rows.map((r) => `${r.dish.name.toLowerCase()} (${formatTotals(r, products)})`).join('; ')}
+                {thawToday.length > 0 && ` · вечером накануне: ${thawToday.map((r) => r.dish.cook!.thaw).join(', ')}`}
               </p>
             )}
             {boxes.length === 0 && <p className="muted small">Без контейнеров.</p>}

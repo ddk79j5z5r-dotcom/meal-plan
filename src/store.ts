@@ -32,7 +32,7 @@ export const useStore = create<Store>()(
       replace: (data) => set({ data }),
       reset: () => set({ data: createSeed() }),
     }),
-    { name: 'meal-plan', version: 3, partialize: (s) => ({ data: s.data }), migrate: (state) => ({ data: migrate((state as { data: unknown }).data) }) },
+    { name: 'meal-plan', version: 4, partialize: (s) => ({ data: s.data }), migrate: (state) => ({ data: migrate((state as { data: unknown }).data) }) },
   ),
 )
 
@@ -59,6 +59,19 @@ export function migrate(raw: unknown): AppData {
     d.cookSteps = fresh.cookSteps
     d.cookTail = fresh.cookTail
     d.version = 3
+  }
+  if (d.version < 4) {
+    // Recipes rewritten for the air fryer (no oven): built-in dishes get the new texts and cooking parameters.
+    const fresh = createSeed()
+    const custom = d.dishes.filter((x) => x.custom)
+    for (const x of custom) if (x.cook && (x.cook.where as string) === 'oven') x.cook = { ...x.cook, where: 'airfryer', batchSize: x.cook.batchSize ?? 3 }
+    d.dishes = [...fresh.dishes, ...custom]
+    d.cookSteps = fresh.cookSteps
+    d.cookTail = fresh.cookTail
+    const foil = d.cookware.find((c) => c.id === 'foil')
+    const freshFoil = fresh.cookware.find((c) => c.id === 'foil')
+    if (foil && freshFoil) foil.name = freshFoil.name
+    d.version = 4
   }
   return d as AppData
 }

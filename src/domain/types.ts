@@ -53,11 +53,16 @@ export interface Ingredient {
 
 /** How a batch dish is cooked on the cooking day and how long it keeps. */
 export interface CookSpec {
-  where: 'oven' | 'stove'
-  /** Oven temperature, °C. */
+  /** The air fryer has one basket and cooks in batches; the stove runs in parallel. */
+  where: 'airfryer' | 'stove'
+  /** Air fryer temperature, °C. */
   temp?: number
-  /** Time on the stove / in the oven, minutes. */
+  /** Time on the stove, or per batch in the air fryer, minutes. */
   minutes: number
+  /** Air fryer: portions that fit in one batch. */
+  batchSize?: number
+  /** What to do while it cooks: turn over, shake, raise the temperature. */
+  heatNote?: string
   /** Hands-on preparation before it goes on the heat, minutes. */
   prep: number
   /** The cook must stay at the stove the whole time (e.g. frying mince). */
@@ -68,6 +73,8 @@ export interface CookSpec {
   fridgeDays: number
   /** Portions beyond `fridgeDays` go to the freezer; otherwise they are cooked fresh mid-week. */
   freezes: boolean
+  /** From this menu day on, cook it fresh mid-week even though it freezes (fish for days 5–7). */
+  freshFrom?: number
   /** Reminder for the evening before the cooking day. */
   thaw?: string
   /** Kept as is, without a food container (eggs in their shells). */
@@ -134,7 +141,7 @@ export interface CookStep {
 }
 
 export interface AppData {
-  version: 3
+  version: 4
   products: Product[]
   dishes: Dish[]
   menu: Menu
