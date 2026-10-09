@@ -13,12 +13,14 @@ export const PRODUCTS: Product[] = [
   { id: 'beef', name: 'Говядина куском (лопатка/мякоть)', category: 'Мясо и рыба', ...kg, price: 850, per100: { kcal: 158, p: 19.5, f: 9, c: 0 }, frequency: 'weekly' },
   { id: 'fish', name: 'Рыба (минтай/горбуша)', category: 'Мясо и рыба', ...kg, price: 480, per100: { kcal: 105, p: 18, f: 3.5, c: 0 }, frequency: 'weekly' },
   { id: 'tuna', name: 'Тунец консерв. в собств. соку, 185 г', category: 'Мясо и рыба', unit: 'pcs', pieceLabel: 'банка', pieceWeight: 140, buyUnit: 'банка', buyFactor: 1, packStep: 1, price: 210, per100: { kcal: 103, p: 23, f: 1, c: 0 }, frequency: 'weekly' },
+  { id: 'carbonade', name: 'Карбонад (нарезка для бутербродов)', category: 'Мясо и рыба', ...kg, price: 1100, per100: { kcal: 150, p: 18, f: 8, c: 1 }, frequency: 'weekly' },
   { id: 'eggs', name: 'Яйца С1', category: 'Молочное и яйца', unit: 'pcs', pieceLabel: 'шт', pieceWeight: 55, buyUnit: 'шт', buyFactor: 1, packStep: 10, price: 13, per100: { kcal: 157, p: 12.7, f: 11.5, c: 0.7 }, frequency: 'weekly' },
   { id: 'cottage', name: 'Творог 5%', category: 'Молочное и яйца', ...kg, packStep: 200, price: 575, per100: { kcal: 121, p: 17.2, f: 5, c: 1.8 }, frequency: 'weekly' },
   { id: 'milk', name: 'Молоко 2,5%', category: 'Молочное и яйца', unit: 'ml', buyUnit: 'л', buyFactor: 1000, packStep: 1000, price: 105, per100: { kcal: 52, p: 2.8, f: 2.5, c: 4.7 }, frequency: 'weekly' },
   { id: 'syrok', name: 'Творожный сырок Б.Ю. Александров', category: 'Молочное и яйца', unit: 'pcs', pieceLabel: 'шт', pieceWeight: 40, buyUnit: 'шт', buyFactor: 1, packStep: 1, price: 65, per100: { kcal: 400, p: 8, f: 25, c: 34 }, frequency: 'weekly' },
   { id: 'cheese', name: 'Сыр твёрдый', category: 'Молочное и яйца', ...kg, price: 950, per100: { kcal: 350, p: 25, f: 27, c: 0 }, frequency: 'weekly' },
   { id: 'bread', name: 'Хлеб цельнозерновой (≈12 ломтей)', category: 'Хлеб', unit: 'pcs', pieceLabel: 'ломт.', pieceWeight: 30, buyUnit: 'буханка', buyFactor: 12, packStep: 12, price: 95, per100: { kcal: 245, p: 9, f: 3, c: 43 }, frequency: 'weekly' },
+  { id: 'bread_black', name: 'Хлеб чёрный бородинский (≈12 ломтей)', category: 'Хлеб', unit: 'pcs', pieceLabel: 'ломт.', pieceWeight: 35, buyUnit: 'буханка', buyFactor: 12, packStep: 12, price: 75, per100: { kcal: 208, p: 6.8, f: 1.3, c: 40.9 }, frequency: 'weekly' },
   { id: 'potato', name: 'Картофель', category: 'Овощи и фрукты', ...kg, price: 55, per100: { kcal: 77, p: 2, f: 0.4, c: 16.3 }, frequency: 'weekly' },
   { id: 'cucumber', name: 'Огурцы', category: 'Овощи и фрукты', ...kg, price: 170, per100: { kcal: 15, p: 0.8, f: 0.1, c: 2.8 }, frequency: 'weekly' },
   { id: 'tomato', name: 'Помидоры', category: 'Овощи и фрукты', ...kg, price: 250, per100: { kcal: 20, p: 1.1, f: 0.2, c: 3.8 }, frequency: 'weekly' },
@@ -30,7 +32,10 @@ export const PRODUCTS: Product[] = [
   { id: 'banana', name: 'Бананы', category: 'Овощи и фрукты', ...kg, price: 135, per100: { kcal: 95, p: 1.5, f: 0.2, c: 21.8 }, frequency: 'weekly' },
   { id: 'apple', name: 'Яблоки', category: 'Овощи и фрукты', ...kg, price: 150, per100: { kcal: 47, p: 0.4, f: 0.4, c: 9.8 }, frequency: 'weekly' },
   { id: 'berries', name: 'Ягоды замороженные', category: 'Овощи и фрукты', ...kg, price: 450, per100: { kcal: 40, p: 0.8, f: 0.4, c: 8 }, frequency: 'weekly' },
+  { id: 'chocopie', name: 'Чокопай', category: 'Сладкое', unit: 'pcs', pieceLabel: 'шт', pieceWeight: 30, buyUnit: 'шт', buyFactor: 1, packStep: 1, price: 28, per100: { kcal: 435, p: 4, f: 18, c: 64 }, frequency: 'weekly' },
   { id: 'rice', name: 'Рис', category: 'Бакалея', ...kg, packStep: 1000, price: 140, per100: { kcal: 344, p: 6.7, f: 0.7, c: 78.9 }, frequency: 'monthly' },
+  { id: 'buckwheat', name: 'Гречка', category: 'Бакалея', ...kg, packStep: 500, price: 130, per100: { kcal: 330, p: 12.6, f: 3.3, c: 62 }, frequency: 'monthly' },
+  { id: 'ptitim', name: 'Птитим', category: 'Бакалея', ...kg, packStep: 500, price: 280, per100: { kcal: 360, p: 12, f: 1.5, c: 73 }, frequency: 'monthly' },
   { id: 'oats', name: 'Овсяные хлопья', category: 'Бакалея', ...kg, packStep: 500, price: 110, per100: { kcal: 352, p: 12.3, f: 6.1, c: 59.5 }, frequency: 'monthly' },
   { id: 'nuts', name: 'Орехи (грецкие/миндаль)', category: 'Бакалея', ...kg, price: 1500, per100: { kcal: 630, p: 18, f: 56, c: 13 }, frequency: 'monthly' },
   { id: 'honey', name: 'Мёд', category: 'Бакалея', ...kg, packStep: 300, price: 700, per100: { kcal: 328, p: 0.8, f: 0, c: 81.5 }, frequency: 'monthly' },
@@ -58,8 +63,10 @@ export const COOK_SPECS: Record<string, CookSpec> = {
   Р13: { where: 'stove', minutes: 30, prep: 3, prepText: 'промыть рис до прозрачной воды, залить водой 1:2, посолить', fridgeDays: 3, freezes: true },
   Р14: { where: 'stove', minutes: 25, prep: 12, prepText: 'очистить картофель, нарезать на 4 части, залить холодной водой, посолить', fridgeDays: 4, freezes: false },
   Р15: { where: 'oven', temp: 180, minutes: 30, prep: 10, prepText: 'смешать творог, яйца и хлопья, добавить ягоды, выложить в форму с пергаментом', fridgeDays: 3, freezes: true },
-  Р19: { where: 'stove', minutes: 40, prep: 10, prepText: 'залить филе водой, довести до кипения; нарезать картофель, морковь и лук', fridgeDays: 3, freezes: true },
-  Р20: { where: 'stove', minutes: 30, prep: 10, prepText: 'нарезать мясо, лук и картофель; обжарить мясо 5 мин', fridgeDays: 3, freezes: false },
+  Р18: { where: 'stove', minutes: 25, prep: 3, prepText: 'перебрать и промыть гречку, залить водой 1:2, посолить', fridgeDays: 3, freezes: true },
+  Р19: { where: 'stove', minutes: 12, prep: 2, prepText: 'вскипятить подсоленную воду для птитима', fridgeDays: 3, freezes: true },
+  Р22: { where: 'stove', minutes: 40, prep: 10, prepText: 'залить филе водой, довести до кипения; нарезать картофель, морковь и лук', fridgeDays: 3, freezes: true },
+  Р23: { where: 'stove', minutes: 30, prep: 10, prepText: 'нарезать мясо, лук и картофель; обжарить мясо 5 мин', fridgeDays: 3, freezes: false },
 }
 
 function dish(code: string, ingredients: Ingredient[], batch: boolean): Dish {
@@ -85,8 +92,8 @@ export const DISHES: Dish[] = [
   dish('Р4', [ing('chicken_thigh', 200)], true),
   dish('Р5', [ing('beef', 200), ing('onion', 50), ing('carrot', 50), ing('oil_sun', 5)], true),
   dish('Р6', [ing('beef_mince', 150), ing('onion', 30), ing('oil_sun', 5)], true),
-  dish('Р7', [ing('beef', 150)], true),
-  dish('Р8', [ing('fish', 150), ing('oil_sun', 3)], true),
+  dish('Р7', [ing('beef', 170)], true),
+  dish('Р8', [ing('fish', 170), ing('oil_sun', 3)], true),
   { ...dish('Р9', [ing('tuna', 1), ing('oil_olive', 3)], false), name: 'Тунец консервированный' },
   dish('Р10', [ing('zucchini', 100), ing('carrot', 50), ing('onion', 50), ing('oil_sun', 3)], true),
   dish('Р11', [ing('zucchini', 75), ing('pepper', 75), ing('oil_sun', 3)], true),
@@ -96,9 +103,12 @@ export const DISHES: Dish[] = [
   dish('Р15', [ing('cottage', 200), ing('eggs', 1), ing('oats', 30), ing('berries', 100)], true),
   dish('Р16', [ing('broccoli', 150)], false),
   dish('Р17', [], false),
-  dish('Р18', [ing('cottage', 200), ing('eggs', 2), ing('oats', 40), ing('banana', 120), ing('honey', 10)], false),
-  dish('Р19', [ing('chicken_fillet', 200), ing('potato', 150), ing('carrot', 50), ing('onion', 50), ing('eggs', 1)], true),
-  dish('Р20', [ing('beef', 200), ing('potato', 200), ing('onion', 50), ing('oil_sun', 5)], true),
+  dish('Р18', [ing('buckwheat', 80)], true),
+  dish('Р19', [ing('ptitim', 80), ing('oil_sun', 3)], true),
+  dish('Р20', [ing('bread_black', 1), ing('carbonade', 30)], false),
+  dish('Р21', [ing('cottage', 200), ing('eggs', 2), ing('oats', 40), ing('banana', 120), ing('honey', 10)], false),
+  dish('Р22', [ing('chicken_fillet', 200), ing('potato', 150), ing('carrot', 50), ing('onion', 50), ing('eggs', 1)], true),
+  dish('Р23', [ing('beef', 200), ing('potato', 200), ing('onion', 50), ing('oil_sun', 5)], true),
 ]
 
 let seq = 0
@@ -121,7 +131,7 @@ function p(productId: string, amount: number): MealItem {
 
 const meals = (names: string[], items: MealItem[][]): Meal[] => names.map((name, i) => ({ name, items: items[i] }))
 const HE_MEALS = ['Завтрак', 'Перекус', 'Обед', 'Перекус', 'Ужин']
-const SHE_MEALS = ['Завтрак', 'Обед', 'Перекус', 'Ужин']
+const SHE_MEALS = ['Завтрак', 'Перекус 1', 'Обед', 'Перекус 2', 'Ужин']
 
 function buildMenu() {
   seq = 0
@@ -134,25 +144,28 @@ function buildMenu() {
     meals(HE_MEALS, [[d('r15')], [d('r2'), p('bread', 1)], [d('r9'), d('r13', { rice: 100 }), d('r10')], [p('banana', 120), p('peanut', 20)], [d('r3'), d('r14', { potato: 200 }), d('r12')]]),
     meals(HE_MEALS, [[d('r1', { honey: 0 })], [p('cottage', 200)], [d('r5'), d('r14'), d('r10')], [d('r2'), p('bread', 1)], [d('r9'), d('r13'), d('r16')]]),
   ]
-  const syrok = () => [p('syrok', 2)]
-  const f150 = { chicken_fillet: 150 }
-  const t150 = { chicken_thigh: 150 }
-  const r70 = { rice: 70 }
+  // Her plan: 1 сырок, Чокопай, lunch, a carbonade sandwich, dinner; meat and fish 170 g.
+  const breakfast = () => [p('syrok', 1)]
+  const snack1 = () => [p('chocopie', 1)]
+  const snack2 = () => [d('r20')]
+  const she170 = (dishId: string, id: string) => d(dishId, { [id]: 170 })
+  const potato = () => d('r14', { potato: 250 })
+  const sheDay = (lunch: MealItem[], dinner: MealItem[]) => meals(SHE_MEALS, [breakfast(), snack1(), lunch, snack2(), dinner])
   const she = [
-    meals(SHE_MEALS, [syrok(), [d('r3', f150), d('r13', r70), d('r12')], [p('cottage', 150), p('apple', 75)], [d('r8'), d('r11')]]),
-    meals(SHE_MEALS, [syrok(), [d('r7'), d('r14'), d('r12')], [d('r2')], [d('r4', t150), d('r13', r70), d('r12')]]),
-    meals(SHE_MEALS, [syrok(), [d('r8'), d('r14'), d('r12')], [p('cottage', 150), p('berries', 100)], [d('r3', f150), d('r11')]]),
-    meals(SHE_MEALS, [syrok(), [d('r7'), d('r13', r70), d('r12')], [p('apple', 150), p('nuts', 15)], [d('r3', f150), d('r14'), d('r12')]]),
-    meals(SHE_MEALS, [syrok(), [d('r4', t150), d('r14'), d('r11')], [d('r2')], [d('r8'), d('r13', r70), d('r12')]]),
-    meals(SHE_MEALS, [syrok(), [d('r7'), d('r11')], [p('cottage', 150)], [d('r3', f150), d('r13', r70), d('r12')]]),
-    meals(SHE_MEALS, [syrok(), [d('r8'), d('r13', r70), d('r12')], [p('apple', 150), p('nuts', 15)], [d('r4', t150), d('r14'), d('r11')]]),
+    sheDay([she170('r3', 'chicken_fillet'), d('r18'), d('r12')], [d('r8'), d('r13'), d('r12')]),
+    sheDay([d('r7'), potato(), d('r12')], [she170('r4', 'chicken_thigh'), d('r19'), d('r11')]),
+    sheDay([d('r8'), d('r13'), d('r12')], [she170('r3', 'chicken_fillet'), potato(), d('r11')]),
+    sheDay([d('r7'), d('r18'), d('r12')], [she170('r3', 'chicken_fillet'), d('r19'), d('r12')]),
+    sheDay([she170('r4', 'chicken_thigh'), potato(), d('r11')], [d('r8'), d('r13'), d('r12')]),
+    sheDay([d('r7'), d('r19'), d('r11')], [she170('r3', 'chicken_fillet'), d('r18'), d('r12')]),
+    sheDay([d('r8'), d('r13'), d('r12')], [she170('r4', 'chicken_thigh'), potato(), d('r11')]),
   ]
   return { he, she }
 }
 
 export function createSeed(today = new Date()): AppData {
   return {
-    version: 2,
+    version: 3,
     products: structuredClone(PRODUCTS),
     dishes: structuredClone(DISHES),
     menu: buildMenu(),
@@ -160,7 +173,7 @@ export function createSeed(today = new Date()): AppData {
       startDate: defaultStartDate(today),
       people: {
         he: { name: 'Он', kcal: 2400, protein: 145 },
-        she: { name: 'Она', kcal: 1550, protein: 88 },
+        she: { name: 'Она', kcal: 1500, protein: 100 },
       },
     },
     cookware: [

@@ -34,6 +34,7 @@
   --cat-veg: #43a047;
   --cat-grocery: #9c6b3d;
   --cat-oil: #c99a06;
+  --cat-sweet: #b5539c;
   --cook: #e8692c;
   --tabbar: 64px;
   color-scheme: light;
@@ -75,6 +76,7 @@
     --cat-veg: #6fcf73;
     --cat-grocery: #c99568;
     --cat-oil: #f0c43a;
+    --cat-sweet: #e58ccf;
     --cook: #ff8a50;
     color-scheme: dark;
   }

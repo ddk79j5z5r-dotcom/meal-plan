@@ -22,6 +22,7 @@ export const CATEGORY_COLOR: Record<Category, string> = {
   Хлеб: 'var(--cat-bread)',
   'Овощи и фрукты': 'var(--cat-veg)',
   Бакалея: 'var(--cat-grocery)',
+  Сладкое: 'var(--cat-sweet)',
   'Масла и специи': 'var(--cat-oil)',
 }
 
@@ -31,5 +32,6 @@ export const CATEGORY_ICON: Record<Category, string> = {
   Хлеб: '🍞',
   'Овощи и фрукты': '🥦',
   Бакалея: '🌾',
+  Сладкое: '🍫',
   'Масла и специи': '🧂',
 }

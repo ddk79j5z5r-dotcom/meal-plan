@@ -7,19 +7,21 @@ const seed = () => createSeed(new Date(2026, 9, 6))
 
 // Columns D/E («Ему»/«Ей») of «Закупка нед.1», in base units (g, ml, pcs; bread in slices).
 const SHEET_NEEDS: Record<string, [number, number]> = {
-  chicken_fillet: [1000, 600],
-  chicken_thigh: [200, 450],
+  chicken_fillet: [1000, 680],
+  chicken_thigh: [200, 510],
   beef_mince: [350, 0],
-  beef: [400, 450],
-  fish: [0, 600],
+  beef: [400, 510],
+  fish: [0, 680],
   tuna: [4, 0],
-  eggs: [18, 4],
-  cottage: [1400, 450],
+  carbonade: [0, 210],
+  eggs: [18, 0],
+  cottage: [1400, 0],
   milk: [950, 0],
-  syrok: [0, 14],
+  syrok: [0, 7],
   cheese: [50, 0],
   bread: [9, 0],
-  potato: [1350, 750],
+  bread_black: [0, 7],
+  potato: [1350, 1000],
   cucumber: [600, 900],
   tomato: [600, 900],
   zucchini: [700, 375],
@@ -28,25 +30,30 @@ const SHEET_NEEDS: Record<string, [number, number]> = {
   pepper: [0, 375],
   broccoli: [300, 0],
   banana: [720, 0],
-  apple: [300, 375],
-  berries: [300, 100],
+  apple: [300, 0],
+  berries: [300, 0],
+  chocopie: [0, 7],
 }
 
 // Columns G («Остаток») and H («Купить») of weeks 1–4, base units.
 const SHEET_WEEKS: Record<string, [number, number][]> = {
-  eggs: [[0, 30], [8, 20], [6, 20], [4, 20]],
-  cottage: [[0, 2000], [150, 1800], [100, 1800], [50, 1800]],
+  chicken_fillet: [[0, 1700], [20, 1700], [40, 1700], [60, 1700]],
+  chicken_thigh: [[0, 800], [90, 700], [80, 700], [70, 700]],
+  beef: [[0, 1000], [90, 900], [80, 900], [70, 900]],
+  carbonade: [[0, 300], [90, 200], [80, 200], [70, 200]],
+  eggs: [[0, 20], [2, 20], [4, 20], [6, 20]],
+  cottage: [[0, 1400], [0, 1400], [0, 1400], [0, 1400]],
   milk: [[0, 1000], [50, 1000], [100, 1000], [150, 1000]],
   cheese: [[0, 100], [50, 0], [0, 100], [50, 0]],
   bread: [[0, 12], [3, 12], [6, 12], [9, 0]],
-  chicken_thigh: [[0, 700], [50, 600], [0, 700], [50, 600]],
+  bread_black: [[0, 12], [5, 12], [10, 0], [3, 12]],
+  potato: [[0, 2400], [50, 2300], [0, 2400], [50, 2300]],
   zucchini: [[0, 1100], [25, 1100], [50, 1100], [75, 1000]],
   onion: [[0, 600], [90, 500], [80, 500], [70, 500]],
   banana: [[0, 800], [80, 700], [60, 700], [40, 700]],
-  apple: [[0, 700], [25, 700], [50, 700], [75, 600]],
 }
 
-const SHEET_WEEK_TOTALS = [7521, 6968.5, 7258, 6808.5]
+const SHEET_WEEK_TOTALS = [7318.5, 6895.5, 6996.5, 6750.5]
 
 describe('weekly needs from the seed menu', () => {
   it('match the «Ему»/«Ей» columns of the workbook', () => {
@@ -58,9 +65,11 @@ describe('weekly needs from the seed menu', () => {
 
   it('match monthly staples (rice, oats, nuts, honey, peanut butter)', () => {
     const needs = weeklyNeeds(seed().menu)
-    expect(needs.get('rice')).toEqual({ he: 520, she: 420 })
+    expect(needs.get('rice')).toEqual({ he: 520, she: 320 })
+    expect(needs.get('buckwheat')).toEqual({ he: 0, she: 240 })
+    expect(needs.get('ptitim')).toEqual({ he: 0, she: 240 })
     expect(needs.get('oats')).toEqual({ he: 300, she: 0 })
-    expect(needs.get('nuts')).toEqual({ he: 95, she: 30 })
+    expect(needs.get('nuts')).toEqual({ he: 95, she: 0 })
     expect(needs.get('honey')).toEqual({ he: 30, she: 0 })
     expect(needs.get('peanut')).toEqual({ he: 40, she: 0 })
   })
@@ -89,9 +98,9 @@ describe('weekly purchases with carried-over leftovers', () => {
     const data = seed()
     data.leftovers['w1:eggs'] = 0 // eggs went bad
     const w1 = purchases(data, 'week', 1).find((r) => r.product.id === 'eggs')!
-    expect(w1).toMatchObject({ leftover: 0, leftoverOverridden: true, buy: 30 })
+    expect(w1).toMatchObject({ leftover: 0, leftoverOverridden: true, buy: 20 })
     const w2 = purchases(data, 'week', 2).find((r) => r.product.id === 'eggs')!
-    expect(w2).toMatchObject({ leftover: 8, buy: 20 })
+    expect(w2).toMatchObject({ leftover: 2, buy: 20 })
   })
 
   it('recalculates when the menu changes', () => {
@@ -107,12 +116,13 @@ describe('monthly purchases', () => {
   it('buy staples for a 28-day cycle plus fixed oils and spices', () => {
     const rows = purchases(seed(), 'cycle', 0)
     const buy = Object.fromEntries(rows.map((r) => [r.product.id, r.buy]))
-    expect(buy).toEqual({ rice: 4000, oats: 1500, nuts: 500, honey: 300, peanut: 300, oil_sun: 1000, oil_olive: 500, spices: 1 })
+    expect(buy).toEqual({ rice: 4000, buckwheat: 1000, ptitim: 1000, oats: 1500, nuts: 400, honey: 300, peanut: 300, oil_sun: 1000, oil_olive: 500, spices: 1 })
   })
 
   it('sum the cycle like the «Итого» sheet (without the day 29–30 tail)', () => {
     const s = cycleSummary(seed(), 0)
-    expect(s.monthly).toBeCloseTo(2700) // workbook: 2850 for 30 days (nuts 0.6 kg instead of 0.5)
+    // workbook: 3315 for 30 days; 28 days need less buckwheat and ptitim (1 kg, not 1.5) and nuts (0.4 kg, not 0.5)
+    expect(s.monthly).toBeCloseTo(560 + 130 + 280 + 165 + 600 + 210 + 180 + 160 + 225 + 450)
     expect(s.weeks).toEqual(SHEET_WEEK_TOTALS)
     expect(s.cookware).toBe(1880)
   })
@@ -179,6 +189,6 @@ describe('cycle statistics', () => {
     const s = cycleStats(data, 0)
     expect(s.changes).toMatchObject([{ base: 480, current: 528 }])
     expect(s.changes[0].change).toBeCloseTo(0.1)
-    expect(s.summary.food - s.foodAtBase).toBeCloseTo(2 * 1.6 * 48)
+    expect(s.summary.food - s.foodAtBase).toBeCloseTo(2 * 1.7 * 48)
   })
 })

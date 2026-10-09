@@ -10,6 +10,7 @@ export const CATEGORIES = [
   'Хлеб',
   'Овощи и фрукты',
   'Бакалея',
+  'Сладкое',
   'Масла и специи',
 ] as const
 export type Category = (typeof CATEGORIES)[number]
@@ -133,7 +134,7 @@ export interface CookStep {
 }
 
 export interface AppData {
-  version: 2
+  version: 3
   products: Product[]
   dishes: Dish[]
   menu: Menu
