@@ -39,13 +39,17 @@ export interface Portion {
 }
 
 export function batchPortions(data: AppData): Portion[] {
+  return menuPortions(data, (dish) => dish.batch)
+}
+
+function menuPortions(data: AppData, include: (dish: Dish) => boolean): Portion[] {
   const out: Portion[] = []
   for (const person of PEOPLE) {
     data.menu[person].forEach((meals, day) => {
       for (const meal of meals) {
         for (const item of meal.items) {
           const dish = item.dishId ? data.dishes.find((d) => d.id === item.dishId) : undefined
-          if (!dish?.batch) continue
+          if (!dish || !include(dish)) continue
           out.push({ dish, person, day, meal: meal.name, ingredients: item.ingredients, place: placeFor(dish, day) })
         }
       }
@@ -102,6 +106,14 @@ export function cookingPlan(data: AppData): CookRow[] {
 export interface MidweekCook {
   day: number
   rows: CookRow[]
+}
+
+/** Dishes made on the day they are eaten (oatmeal, salad, sandwich…), not on the cooking day. */
+export function dailyPlan(data: AppData): CookRow[] {
+  return aggregate(
+    menuPortions(data, (dish) => !dish.batch && !!dish.howTo),
+    data.dishes,
+  )
 }
 
 /** Dishes that don't freeze and are cooked again mid-week, grouped by day. */

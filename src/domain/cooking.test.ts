@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createSeed } from '../data/seed'
 import { migrate } from '../store'
 import type { AppData } from './types'
-import { batchTimes, containerCount, containerPlan, cookingPlan, eveningTransfers, midweekPlan, schedule, thawFor } from './cooking'
+import { batchTimes, containerCount, containerPlan, cookingPlan, dailyPlan, eveningTransfers, midweekPlan, schedule, thawFor } from './cooking'
 
 const seed = () => createSeed(new Date(2026, 9, 6))
 
@@ -62,6 +62,14 @@ describe('cooking day plan', () => {
     expect(eveningTransfers(data, 0)).toEqual([])
     expect(eveningTransfers(data, 2).map((p) => p.dish.code)).toContain('Р3')
     expect(eveningTransfers(data, 6)).toEqual([])
+  })
+
+  it('lists dishes made fresh every day, like oatmeal', () => {
+    const daily = dailyPlan(seed())
+    const oatmeal = daily.find((r) => r.dish.code === 'Р1')!
+    expect(oatmeal.portions.he.days).toEqual([1, 4, 7])
+    expect(daily.map((r) => r.dish.code)).toEqual(expect.arrayContaining(['Р1', 'Р9', 'Р12', 'Р16', 'Р20']))
+    expect(daily.some((r) => r.dish.batch)).toBe(false)
   })
 
   it('counts containers without eggs kept in their shells', () => {

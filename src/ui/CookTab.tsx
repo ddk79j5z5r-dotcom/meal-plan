@@ -7,6 +7,7 @@ import {
   containerPlan,
   COOL_MINUTES,
   cookingPlan,
+  dailyPlan,
   eveningTransfers,
   formatClock,
   formatDuration,
@@ -293,7 +294,8 @@ function WhatToCook({
   const data = useData()
   const people = data.settings.people
   const midweek = midweekPlan(data)
-  const row = (r: CookRow) => (
+  const daily = dailyPlan(data)
+  const row = (r: CookRow, withHeat = true) => (
     <li key={r.dish.id} className="dot-row" style={tint(dishColor(r.dish))}>
       <button className="item tappable" onClick={() => onOpen(r.dish)}>
         <span className="item-name">
@@ -305,13 +307,15 @@ function WhatToCook({
             <i className={`swatch p-${p}`} aria-hidden /> {people[p].name}: {r.portions[p].count} порц. · дни {r.portions[p].days.join(', ')}
           </span>
         ))}
-        <span className="muted small">
-          {specOf(r.dish).where === 'airfryer'
-            ? `💨 ${specOf(r.dish).temp} °C · ${batchesFor(specOf(r.dish), portionCount(r))} × ${specOf(r.dish).minutes} мин`
-            : `🔥 плита · ${specOf(r.dish).minutes} мин`}
-          {r.fridge > 0 && ` · 🧊 ${r.fridge}`}
-          {r.freezer > 0 && ` · ❄️ ${r.freezer}`}
-        </span>
+        {withHeat && (
+          <span className="muted small">
+            {specOf(r.dish).where === 'airfryer'
+              ? `💨 ${specOf(r.dish).temp} °C · ${batchesFor(specOf(r.dish), portionCount(r))} × ${specOf(r.dish).minutes} мин`
+              : `🔥 плита · ${specOf(r.dish).minutes} мин`}
+            {r.fridge > 0 && ` · 🧊 ${r.fridge}`}
+            {r.freezer > 0 && ` · ❄️ ${r.freezer}`}
+          </span>
+        )}
         <span className="chev">›</span>
       </button>
     </li>
@@ -322,7 +326,7 @@ function WhatToCook({
       <h3 className="cat" style={tint('var(--cook)')}>
         <span aria-hidden>🥘</span> В день готовки · на двоих
       </h3>
-      <ul className="card list">{plan.map(row)}</ul>
+      <ul className="card list">{plan.map((r) => row(r))}</ul>
       {midweek.length > 0 && (
         <>
           <h3 className="cat" style={tint('var(--lunch)')}>
@@ -334,9 +338,18 @@ function WhatToCook({
               <p className="small">
                 <b>{dayLabel(m.day)}</b>
               </p>
-              <ul className="card list">{m.rows.map(row)}</ul>
+              <ul className="card list">{m.rows.map((r) => row(r))}</ul>
             </section>
           ))}
+        </>
+      )}
+      {daily.length > 0 && (
+        <>
+          <h3 className="cat" style={tint('var(--breakfast)')}>
+            <span aria-hidden>☀️</span> Каждый день, без заготовки
+          </h3>
+          <p className="muted small">Готовятся в день еды за несколько минут — рецепт по тапу.</p>
+          <ul className="card list">{daily.map((r) => row(r, false))}</ul>
         </>
       )}
     </>
